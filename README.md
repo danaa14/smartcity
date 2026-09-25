@@ -27,7 +27,7 @@ npx tsc --noEmit && npm run lint
 npm run build && npm start
 ```
 
-No API key is needed. The app runs in a **deterministic demo mode**, labelled in every answer ("How this answer was produced").
+**AI model (optional).** Copy `.env.example` to `.env` and set `OPENCODE_API_KEY` (OpenCode Go). The default model is `muse-spark-1.3-contributor`; OpenCode requires "Allow paid endpoints that train on request data" in the workspace Privacy settings for it. The model only drafts the direct-answer claims; each one must still quote a passage verbatim or it is dropped. With no key, or if the model call fails, the app uses the **deterministic demo mode**. Every answer states which mode produced it ("How this answer was produced").
 
 ## Pages
 
