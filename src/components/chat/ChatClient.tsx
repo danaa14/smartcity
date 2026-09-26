@@ -116,11 +116,10 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
         <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); void ask(draft); }}>
           <button type="button" className="composer-tools" aria-label={t({ ro: "Adaugă un document sau pregătește o sesizare", ru: "Добавить документ или подготовить обращение" })} onClick={(e) => openSheet("tools", e.currentTarget)}><Icon name="plus" /></button>
           <label htmlFor="chat-message" className="sr-only">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label>
-          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
+          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : undefined} />
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
-        <p id="chat-hint" className="composer-hint">{t({ ro: "Răspunsuri cu surse. Fără date personale în mesaje.", ru: "Ответы с источниками. Не указывайте личные данные." })}</p>
         <p className="sr-only" role="status">{busy ? t({ ro: "Se caută răspunsul.", ru: "Идёт поиск ответа." }) : turns.at(-1)?.answer ? t({ ro: "Răspunsul este gata.", ru: "Ответ готов." }) : ""}</p>
       </div>
 

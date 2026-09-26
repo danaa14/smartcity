@@ -19,8 +19,8 @@ export function SiteHeader() {
         <span>pe fir<span className="brand-period">.</span><small>CHIȘINĂU</small></span>
       </Link>
       <nav className="header-switch" aria-label={t({ ro: "Navigare principală", ru: "Основная навигация" })}>
-        <Link href="/" aria-current={chat ? "page" : undefined}><Icon name="chat" /><span>{t({ ro: "Conversație", ru: "Диалог" })}</span></Link>
-        <Link href="/raporteaza" aria-current={reporting ? "page" : undefined}><Icon name="pin" /><span>{t({ ro: "Dă de veste", ru: "Сообщить" })}</span></Link>
+        <Link className="nav-chat" href="/" aria-current={chat ? "page" : undefined}><Icon name="chat" /><span>{t({ ro: "Conversație", ru: "Диалог" })}</span></Link>
+        <Link className="nav-report" href="/raporteaza" aria-current={reporting ? "page" : undefined}><Icon name="pin" /><span>{t({ ro: "Dă de veste", ru: "Сообщить" })}</span></Link>
       </nav>
       <LangSwitch />
     </header>
