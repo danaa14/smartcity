@@ -11,7 +11,7 @@ export const CATEGORIES: { id: CategoryId; label: L10n; icon: string; cues: stri
   { id: "other", label: { ro: "Altceva", ru: "Другое" }, icon: "•", cues: [] },
 ];
 
-export type TicketEventKind = "created_local" | "reviewed_by_user" | "deleted_media";
+export type TicketEventKind = "created_local" | "reviewed_by_user" | "deleted_media" | "marked_done" | "reopened";
 
 export interface TicketMedia {
   kind: "photo" | "video" | "audio";
@@ -26,11 +26,14 @@ export interface Ticket {
   channel: "web" | "phone-demo";
   lang: "ro" | "ru";
   category: CategoryId;
+  title?: string;
+  city?: string;
+  status?: "active" | "done";
   categorySuggested: CategoryId | null;
   categoryChangedByUser: boolean;
   description: string;
   descriptionSuggested: string | null;
-  location: { text: string; lat?: number; lng?: number; source: "manual" | "device" };
+  location: { text: string; lat?: number; lng?: number; source: "manual" | "device" | "photo" };
   media: TicketMedia[];
   contactConsent: false;
   submission: { adapter: string; submitted: boolean; externalId: null; note: string };

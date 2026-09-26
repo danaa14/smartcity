@@ -87,9 +87,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
         {!turns.length ? (
           <section className="chat-welcome" aria-labelledby="welcome-title">
             <div className="welcome-art" aria-hidden="true"><span className="art-orbit" /><span className="art-chat"><Icon name="chat" /></span><span className="art-spark">✦</span></div>
-            <p className="eyebrow">{t({ ro: "ORAȘUL TĂU. MAI APROAPE.", ru: "ВАШ ГОРОД. СТАЛ БЛИЖЕ." })}</p>
             <h1 id="welcome-title">{t({ ro: "Hai să vorbim", ru: "Поговорим" })}<br />{t({ ro: "despre Chișinău.", ru: "о Кишинэу." })}</h1>
-            <p className="welcome-description">{t({ ro: "O întrebare, un document, o idee pentru oraș.\nÎncepem cu ce ai nevoie.", ru: "Вопрос, документ, идея для города.\nНачнём с того, что вам нужно." })}</p>
           </section>
         ) : (
           <div className="conversation">

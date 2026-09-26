@@ -37,7 +37,7 @@ npm run build && npm start
 | `/intreaba` | Ask: status badge, claims with `[n]` citation markers, source panel with highlighted passage, "radiography" toggle, step-by-step route, missing/contradiction views, contacts + official service page, rating, citation report. |
 | `/surse`, `/surse/[id]` | Corpus documents, passage search, Annex 1 inventory, per-document metadata, relations, tariff version timeline. CSV: `/api/inventory`. |
 | `/scaneaza` | Upload image/PDF → local Tesseract OCR → preview with highlights, observations vs. deductions with citations, editable OCR text, "needs review". |
-| `/raporteaza` → `/tichet/[id]` | 3-step report (text/photo/video/voice → location + category + description → review & confirm) → local DEMO ticket, truthful timeline, delete. |
+| `/raporteaza` → `/raporteaza/creeaza` → `/tichet/[id]` | Create a ticket with a photo, city, location (including JPG GPS metadata when available), and a short title; browse active and resolved tickets by city. Demo tickets stay local to the device. |
 | `/suna` | Phone concept demo (RO/RU), same answer engine, voice report with read-back, human escalation when evidence is missing. |
 | `/angajati` | Employee view: unanswered/partial questions, candidate contradictions with both passages, citation reports, ratings, demo tickets, review states, filters. |
 | `/despre` | What works / simulated / needs integration, coverage, privacy, **monthly budget calculator**. |

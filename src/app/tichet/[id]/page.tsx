@@ -31,8 +31,7 @@ export default async function TicketPage(props: PageProps<"/tichet/[id]">) {
   const timeline = [
     { done: true, label: { ro: "Tichet creat și salvat local (demo)", ru: "Заявка создана и сохранена локально (демо)" }, at: tk.createdAt },
     { done: false, label: { ro: "Trimis către Primărie — NU (nu există integrare)", ru: "Отправлено в Примэрию — НЕТ (интеграции нет)" } },
-    { done: false, label: { ro: "Înregistrat de o instituție — nu se aplică", ru: "Зарегистрировано учреждением — не применимо" } },
-    { done: false, label: { ro: "Soluționat — nu se aplică", ru: "Решено — не применимо" } },
+    { done: tk.status === "done", label: tk.status === "done" ? { ro: "Marcat rezolvat în prototip", ru: "Отмечено решённым в прототипе" } : { ro: "Încă activ în prototip", ru: "Активно в прототипе" } },
   ];
 
   return (
@@ -53,8 +52,10 @@ export default async function TicketPage(props: PageProps<"/tichet/[id]">) {
       </div>
 
       <header>
+        {tk.title && <h1 className="mb-1 text-2xl font-semibold">{tk.title}</h1>}
+        {tk.city && <p className="text-sm text-muted">{tk.city}</p>}
         <p className="text-sm text-muted">{t({ ro: "Număr tichet", ru: "Номер заявки" })}</p>
-        <h1 className="font-mono text-2xl font-bold tracking-wide sm:text-3xl">{tk.id}</h1>
+        <p className="font-mono text-xl font-bold tracking-wide sm:text-2xl">{tk.id}</p>
         <p className="text-sm text-muted">{fmtDateTime(tk.createdAt, lang)}</p>
       </header>
 

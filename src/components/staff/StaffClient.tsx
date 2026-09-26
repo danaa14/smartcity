@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLang } from "../LangProvider";
 import { DemoBadge, StatusBadge } from "../ui";
 import { Highlight } from "../ask/AnswerView";
@@ -260,10 +261,9 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
             <ul className="space-y-2">
               {tickets.map((k) => (
                 <li key={k.id} className="card flex flex-wrap items-center gap-3 p-3">
-                  <Link href={`/tichet/${k.id}`} className="link font-mono font-bold">{k.id}</Link>
+                  <div className="min-w-48"><Link href={`/tichet/${k.id}`} className="link font-semibold">{k.title || CATEGORIES.find((c) => c.id === k.category)?.label[lang]}</Link><p className="mt-1 text-xs text-muted">{k.city || "Chișinău"} · {k.location.text}</p><p className="font-mono text-xs text-muted">{k.id}</p></div>
                   <DemoBadge lang={lang} />
-                  <span className="text-sm">{CATEGORIES.find((c) => c.id === k.category)?.label[lang]}</span>
-                  <span className="text-sm text-muted">{k.location.text}</span>
+                  <TicketStatusControl ticket={k} />
                   <span className="ml-auto text-xs text-muted">{k.channel === "phone-demo" ? "☏ " : ""}{fmtDateTime(k.createdAt, lang)} · {t({ ro: "netrimis", ru: "не отправлено" })}</span>
                 </li>
               ))}
@@ -272,6 +272,22 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
       </div>
     </div>
   );
+}
+
+function TicketStatusControl({ ticket }: { ticket: Ticket }) {
+  const { t } = useLang();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const status = ticket.status ?? "active";
+  const update = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/tickets/${ticket.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: status === "done" ? "active" : "done" }) });
+      if (!r.ok) throw new Error("update_failed");
+      router.refresh();
+    } finally { setBusy(false); }
+  };
+  return <button type="button" className="btn btn-secondary min-h-9 text-xs" disabled={busy} onClick={() => void update()}>{busy ? "…" : status === "done" ? t({ ro: "Redeschide", ru: "Открыть снова" }) : t({ ro: "Marchează rezolvat", ru: "Отметить решённой" })}</button>;
 }
 
 function StateControl({ item, onChange }: { item: ReviewItem; onChange: (id: string, s: ReviewState) => void }) {
