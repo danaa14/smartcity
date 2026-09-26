@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLang } from "../LangProvider";
 
-export function ReportCamera({ onPhoto, onSkip }: { onPhoto: (file: File) => void; onSkip: () => void }) {
+export function ReportCamera({ onPhoto }: { onPhoto: (file: File) => void }) {
   const { t } = useLang();
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -50,7 +50,6 @@ export function ReportCamera({ onPhoto, onSkip }: { onPhoto: (file: File) => voi
       {!ready && <div className="camera-placeholder"><span aria-hidden="true">◎</span><p>{state === "opening" ? t({ ro: "Se deschide camera…", ru: "Открываем камеру…" }) : state === "paused" ? t({ ro: "Camera este oprită", ru: "Камера остановлена" }) : t({ ro: "Permite accesul la cameră sau alege o fotografie", ru: "Разрешите доступ к камере или выберите фото" })}</p>{state !== "opening" && <button type="button" onClick={() => void start()}>{t({ ro: "Încearcă din nou", ru: "Попробовать снова" })}</button>}</div>}
       <span className="camera-caption">{t({ ro: "Un cadru. Un oraș mai bun.", ru: "Один кадр. Город становится лучше." })}</span>
     </div>
-    <div className="camera-controls"><label className="camera-alternative"><span aria-hidden="true">▧</span>{t({ ro: "Din galerie", ru: "Из галереи" })}<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={e => { const file = e.target.files?.[0]; if (file) { epoch.current++; stop(); onPhoto(file); } }} /></label><button className="camera-shutter" disabled={!ready || busy} onClick={() => void capture()} aria-label={t({ ro: "Fotografiază", ru: "Сделать фото" })}><span /></button><button className="camera-alternative" onClick={() => { epoch.current++; stop(); onSkip(); }}><span aria-hidden="true">→</span>{t({ ro: "Fără poză", ru: "Без фото" })}</button></div>
-    <p className="report-helper">{t({ ro: "Fotografia rămâne aici până apeși Trimite. Poți continua și fără cameră.", ru: "Фото останется здесь, пока вы не нажмёте «Отправить». Можно продолжить без камеры." })}</p>
+    <div className="camera-controls"><label className="camera-alternative"><span aria-hidden="true">▧</span>{t({ ro: "Din galerie", ru: "Из галереи" })}<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={e => { const file = e.target.files?.[0]; if (file) { epoch.current++; stop(); onPhoto(file); } e.target.value = ""; }} /></label><button className="camera-shutter" disabled={!ready || busy} onClick={() => void capture()} aria-label={t({ ro: "Fotografiază", ru: "Сделать фото" })}><span /></button></div>
   </div>;
 }

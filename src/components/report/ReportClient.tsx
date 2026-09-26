@@ -51,7 +51,6 @@ export function ReportClient({ initialTickets = [] }: { initialTickets?: Summary
     if (files.length + incoming.length > 3) { setError(t({ ro: "Poți atașa maximum 3 fotografii sau videoclipuri.", ru: "Можно прикрепить до 3 фото или видео." })); return false; }
     setFiles(previous => [...previous, ...incoming]); setError(""); return true;
   }
-  const labels = [t({ ro: "Arată-ne", ru: "Покажите" }), t({ ro: "Spune-ne", ru: "Расскажите" }), t({ ro: "Trimite", ru: "Отправьте" })];
   const service = SERVICES.find(item => item.id === draft.service);
   function review() {
     setError("");
@@ -90,12 +89,11 @@ export function ReportClient({ initialTickets = [] }: { initialTickets?: Summary
     }
   }
   return <div className="report-flow">
-    <header className="report-intro"><p className="report-eyebrow">{t({ ro: "UN ORAȘ MAI BUN, ÎMPREUNĂ", ru: "СДЕЛАЕМ ГОРОД ЛУЧШЕ ВМЕСТЕ" })}</p><h1>{t({ ro: "Ai observat ceva?", ru: "Заметили проблему?" })}<br /><span>{t({ ro: "Dă-ne de veste.", ru: "Дайте нам знать." })}</span></h1><p>{t({ ro: "O fotografie. Câteva cuvinte. Un pas spre un oraș mai bun.", ru: "Фото. Несколько слов. Шаг к лучшему городу." })}</p></header>
-    <ol className="report-steps" aria-label={t({ ro: "Pașii sesizării", ru: "Шаги обращения" })}>{labels.map((label, i) => <li key={i} aria-current={step === i ? "step" : undefined} className={i < step ? "complete" : ""}><span>{i < step ? "✓" : `0${i + 1}`}</span>{label}</li>)}</ol>
+    <header className="report-intro"><h1>{t({ ro: "Ai observat ceva?", ru: "Заметили проблему?" })}<br /><span>{t({ ro: "Dă-ne de veste.", ru: "Дайте нам знать." })}</span></h1></header>
     <section className="report-surface" aria-labelledby="report-step-title">
-      <div className="report-section-head"><div><p className="report-eyebrow">{t({ ro: "PASUL", ru: "ШАГ" })} 0{step + 1} / 03</p><h2 id="report-step-title" tabIndex={-1} ref={heading}>{step === 0 ? t({ ro: "Totul începe cu o imagine", ru: "Начнём с фотографии" }) : step === 1 ? t({ ro: "Ce putem îmbunătăți?", ru: "Что можно улучшить?" }) : t({ ro: "Arată bine? Trimite mai departe.", ru: "Всё верно? Можно отправлять." })}</h2></div><span className="report-leaf" aria-hidden="true">↗</span></div>
+      <div className="report-section-head"><div><h2 id="report-step-title" tabIndex={-1} ref={heading}>{step === 0 ? t({ ro: "Totul începe cu o imagine", ru: "Начнём с фотографии" }) : step === 1 ? t({ ro: "Ce putem îmbunătăți?", ru: "Что можно улучшить?" }) : t({ ro: "Arată bine? Trimite mai departe.", ru: "Всё верно? Можно отправлять." })}</h2></div></div>
       {error && <p className="report-error" role="alert">{error}</p>}
-      {step === 0 && <ReportCamera onPhoto={file => { if (addFiles([file])) setStep(1); }} onSkip={() => { setError(""); setStep(1); }} />}
+      {step === 0 && <ReportCamera onPhoto={file => { if (addFiles([file])) setStep(1); }} />}
       {step === 1 && <div className="report-details">
         {restored && <div className="report-note">{t({ ro: "Am păstrat textul ciornei tale. Atașamentele trebuie adăugate din nou.", ru: "Текст черновика сохранён. Вложения нужно добавить заново." })}<button type="button" className="report-text-button" onClick={() => { setDraft(EMPTY); setFiles([]); setAudio(null); setRestored(false); }}>{t({ ro: "Începe de la zero", ru: "Начать заново" })}</button></div>}
         {files.length > 0 && <div className="report-attachments">{files.map((file, index) => <div className="report-attachment" key={`${file.name}-${index}`}><ReportMedia file={file} /><button type="button" onClick={() => setFiles(previous => previous.filter((_, i) => i !== index))} aria-label={`${t({ ro: "Elimină", ru: "Удалить" })} ${file.name}`}>×</button></div>)}</div>}
@@ -123,7 +121,6 @@ export function ReportClient({ initialTickets = [] }: { initialTickets?: Summary
         <div className="report-actions"><button type="button" className="report-text-button" disabled={busy} onClick={() => { setStep(1); setError(""); }}>← {t({ ro: "Mai schimb ceva", ru: "Изменить детали" })}</button><button type="button" className="report-primary" disabled={busy} onClick={() => void submit()}>{busy ? t({ ro: "Se salvează…", ru: "Сохраняем…" }) : t({ ro: "Trimite sesizarea demo", ru: "Отправить демо-заявку" })}<span>↗</span></button></div>
       </div>}
     </section>
-    <p className="report-footer-note">{t({ ro: "Spațiu demo · Sesizările rămân în acest prototip și nu ajung la instituții.", ru: "Демо · Обращения сохраняются в прототипе и не поступают в учреждения." })}</p>
     {initialTickets.length > 0 && <details className="report-history"><summary>{t({ ro: "Sesizări recente", ru: "Последние обращения" })} <span>{initialTickets.length}</span></summary>{initialTickets.slice(0, 8).map(ticket => <Link href={`/tichet/${ticket.id}`} key={ticket.id}><span>{ticket.title || ticket.description || ticket.id}</span><span>↗</span></Link>)}</details>}
   </div>;
 }
