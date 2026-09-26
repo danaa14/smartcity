@@ -13,7 +13,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "not_found" }, { status: 404 });
 }
 
-export async function PATCH(req: Request, ctx: RouteContext<"/api/tickets/[id]">) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null) as { status?: unknown } | null;
   if (body?.status !== "active" && body?.status !== "done") return NextResponse.json({ error: "invalid_status" }, { status: 400 });

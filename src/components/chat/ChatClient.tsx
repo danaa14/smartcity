@@ -226,6 +226,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
         {fileErr && <p className="composer-error" role="alert">{t({ ro: "Fișierul depășește 10 MB. Încearcă o fotografie mai mică.", ru: "Файл больше 10 МБ. Попробуйте фото меньшего размера." })}</p>}
+        <p id="chat-hint" className="composer-hint">{t({ ro: "Răspunsuri cu surse. Fără date personale în mesaje.", ru: "Ответы с источниками. Не указывайте личные данные." })}</p>
         <p className="sr-only" role="status">{busy ? t({ ro: "Se caută răspunsul.", ru: "Идёт поиск ответа." }) : settled(turns.at(-1)) ? t({ ro: "Răspunsul este gata.", ru: "Ответ готов." }) : ""}</p>
       </div>
 

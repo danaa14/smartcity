@@ -17,13 +17,12 @@ export async function POST(req: Request) {
   const city = (s("city") || "Chișinău").slice(0, 80);
   const locationInput = s("location").slice(0, 300);
   const category = s("category") as CategoryId;
-  const mediaFiles = form.getAll("media").filter((f): f is File => f instanceof File);
+  const mediaFiles = form.getAll("media").filter((f): f is File => f instanceof File && f.size > 0);
   const hasVideo = mediaFiles.some((f) => f.type.startsWith("video/"));
   const errors: Record<string, string> = {};
   if (description.length < 5 && !hasVideo) errors.description = "description_short";
   if (!CAT_IDS.has(category)) errors.category = "category_missing";
   if (s("confirm") !== "yes") errors.confirm = "not_confirmed";
-  const mediaFiles = form.getAll("media").filter((f): f is File => f instanceof File && f.size > 0);
   const photoFile = mediaFiles.find((f) => f.type.startsWith("image/"));
   const photoGps = photoFile?.type === "image/jpeg" ? await photoFile.arrayBuffer().then(gpsFromExif).catch(() => null) : null;
   const location = locationInput || (photoGps ? `GPS ${photoGps.lat.toFixed(5)}, ${photoGps.lng.toFixed(5)}` : "");

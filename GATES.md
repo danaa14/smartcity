@@ -43,6 +43,24 @@
 
 ABANDON: none
 
+## G12: Remote /raporteaza compared, page taken from git
+- [x] Fetched origin (0487c08); `raporteaza/page.tsx` and `ReportClient.tsx` already identical (video UI is on git); `creeaza/page.tsx` taken from git (redirect, drops the broken props).
+  CHECK: git diff origin/main -- src/app/raporteaza src/components/report/ | wc -l
+  EXPECT: 0
+  EVIDENCE: 0 lines differ at merge time; clone refreshed to 0487c08. `raporteaza/page.tsx` has since diverged by one intentional fix — see G14.
+
+## G13: Merged tree still serves
+- [x] `/raporteaza` 200, `/raporteaza/creeaza` redirects to `/raporteaza`.
+  CHECK: curl -s -o /dev/null -w "%{http_code}" http://localhost:3100/raporteaza/creeaza
+  EXPECT: /30[12]/
+  EVIDENCE: creeaza 307, raporteaza 200.
+
+## G14: Merged tree type-checks and builds
+- [x] The 3 errors inherited from git's in-progress refactor are fixed: `raporteaza/page.tsx` no longer passes `initialTickets` to the now props-less `ReportClient`, and `tickets-id.ts` PATCH takes the same manual params type as its GET/DELETE siblings (`RouteContext<"/api/tickets/[id]">` does not resolve under the single-function `/api/[[...path]]` route). Local chat kept its composer hint, which also restores the `aria-describedby="chat-hint"` target git's deletion had orphaned.
+  CHECK: next build
+  EXPECT: exit 0, no "Failed to type check"
+  EVIDENCE: build passes, 92 pages generated; eslint 0 errors (6 pre-existing warnings). Not verified: mobile CSS at real viewport sizes.
+
 ## G8: Remote redesign cloned to a separate folder
 - [x] `996ef17 "Redesign municipal assistant as a chat-first experience"` cloned to `../Tesseract-new-ui`, working tree untouched.
   CHECK: git -C ../Tesseract-new-ui log --oneline -1
