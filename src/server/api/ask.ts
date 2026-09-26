@@ -98,13 +98,14 @@ export async function POST(req: Request) {
  * where questions about the user's own paperwork land.
  */
 async function resolve(req: Request, question: string, lang: Lang, history: string, doc?: DocContext): Promise<Answer> {
-  if (retrieve(question).grounded) {
+  const grounded = retrieve(question).grounded;
+  if (grounded) {
     const corpus = await answerWithModel(question, lang, req.signal);
     if (corpus) return withWebFallback(corpus, question);
   }
   // Keep open-domain prose for small talk and questions about an uploaded personal document.
   // Municipal questions without matching official evidence must not fall through to model memory/web.
-  if (!isSmallTalk(question) && !doc) return answerQuestion(question, lang, { includeDemo: false });
+  if (!isSmallTalk(question) && !doc) return answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
   if (!AI.enabled) return answerQuestion(question, lang, { includeDemo: false });
   const web = Promise.resolve<WebResult[]>([]);
   const text = await askGeneral(question, lang, history, req.signal, doc);
@@ -139,7 +140,8 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
       };
 
       try {
-        if (retrieve(question).grounded) {
+        const grounded = retrieve(question).grounded;
+        if (grounded) {
           send({ type: "phase", label: phases.search });
           const ticker = setInterval(() => send({ type: "phase", label: phases.verify }), 6000);
           let corpus: Answer | null;
@@ -158,7 +160,7 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
         }
 
         if (!isSmallTalk(question) && !doc) {
-          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false }) });
+          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false, forceMissing: true }) });
           return close();
         }
         if (!AI.enabled) {

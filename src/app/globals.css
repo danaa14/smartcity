@@ -789,8 +789,6 @@ button:not(:disabled), summary { cursor: pointer; }
 /* Match the report action and language control as equal header pills. */
 .site-header { --header-pill-width: 93px; --header-pill-height: 46px; }
 .site-header .header-switch { padding: 0; background: transparent; gap: 8px; }
-.site-header .language-switch { width: var(--header-pill-width); height: var(--header-pill-height); flex: 0 0 var(--header-pill-width); padding: 3px; border-radius: 30px; background: #f4f5f2; }
-.site-header .language-switch button { flex: 1; min-width: 0; min-height: 0; padding: 0; height: 40px; }
 .site-header .header-switch a.nav-report,
 .site-header .header-switch a.nav-report:not([aria-current]),
 .site-header .header-switch a.nav-report[aria-current] {
@@ -815,7 +813,6 @@ button:not(:disabled), summary { cursor: pointer; }
   right: calc(100% + 8px);
   white-space: nowrap;
 }
-.site-header .language-switch { margin-left: auto; }
 
 /* One consistent segmented navigation control on desktop and mobile. */
 .site-header .header-switch {
@@ -900,8 +897,6 @@ button:not(:disabled), summary { cursor: pointer; }
     font-size: 11px;
   }
   .site-header .header-switch > a svg { display: none; }
-  .site-header .language-switch { width: 78px; height: 43px; flex: 0 0 78px; margin-left: 0; padding: 3px; }
-  .site-header .language-switch button { min-width: 0; height: 35px; min-height: 35px; font-size: 10px; }
 }
 @media(max-width:370px) {
   .site-header .header-switch { max-width: none; }
@@ -910,8 +905,6 @@ button:not(:disabled), summary { cursor: pointer; }
   .site-header .header-switch > a.nav-report,
   .site-header .header-switch > a.nav-report:not([aria-current]),
   .site-header .header-switch > a.nav-report[aria-current] { padding: 4px 3px; font-size: 9px; }
-  .site-header .language-switch { width: 64px; flex-basis: 64px; }
-  .site-header .language-switch button { padding: 0 3px; font-size: 9px; }
 }
 
 /* Back office: the staff side of the same interface — denser, internal, still quiet. */
@@ -1053,7 +1046,6 @@ button:not(:disabled), summary { cursor: pointer; }
 .account-drawer.is-closing::backdrop { animation:drawer-overlay-out 240ms ease both; }
 .drawer-inner { height:100%; display:flex; flex-direction:column; padding:30px 26px max(24px,env(safe-area-inset-bottom)); }
 .drawer-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:26px; }
-.drawer-eyebrow { font-size:9px; letter-spacing:1.8px; color:#7b866d; }
 .drawer-heading h2 { font-size:22px; letter-spacing:-.6px; font-weight:550; margin-top:8px; }
 .drawer-close { width:38px; height:38px; flex-basis:38px; }
 .new-conversation { display:flex; gap:10px; align-items:center; justify-content:center; width:100%; border:1px solid #dfe5d6; border-radius:999px; padding:12px; background:#edf1e5; font-size:13px; font-weight:550; }
@@ -1074,7 +1066,6 @@ button:not(:disabled), summary { cursor: pointer; }
 .history-empty h3 { font-size:15px; font-weight:500; }
 .history-empty p { font-size:12px; color:#7a826f; line-height:1.8; margin-top:10px; }
 .drawer-footer { border-top:1px solid #e5e9de; padding-top:18px; }
-.history-storage-note { font-size:10px; color:#7a826f; line-height:1.7; margin-bottom:16px; }
 .drawer-controls { display:flex; align-items:center; gap:12px; }
 .google-control,.account-drawer .language-switch { display:flex; justify-content:center; align-items:center; gap:8px; width:auto; min-width:0; flex:1 1 0; height:48px; margin:0; padding:4px; border:1px solid #e5e9de; border-radius:999px; background:#f0f2eb; font-size:12px; font-weight:550; }
 .google-control img { width:28px; height:28px; border-radius:50%; }

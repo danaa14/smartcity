@@ -36,7 +36,8 @@ export interface ValidationReport {
 }
 
 /**
- * `corpus` answers carry verbatim-verified citations and are the app's guarantee.
+ * `corpus` answers carry exact-quote-checked citations. Exact matching does not prove semantic entailment;
+ * the displayed source passage remains the evidence a reader can inspect.
  * `prose` answers come from the model's own knowledge when the corpus cannot reach the
  * question; they are never cited and must always render the unverified badge.
  */

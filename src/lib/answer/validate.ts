@@ -2,6 +2,7 @@ import { PASSAGE_BY_ID } from "../corpus/passages";
 import { DOC_BY_ID } from "../corpus/docs";
 import { squash } from "../text";
 import type { Claim, ValidationReport } from "./types";
+import { isCitizenAnswerSource } from "../corpus/sources";
 
 /**
  * A claim is displayed only if every citation resolves to an indexed passage and the quoted
@@ -28,6 +29,8 @@ function check(c: Claim): string | null {
     if (!p) return `unknown passage ${cit.passageId}`;
     const doc = DOC_BY_ID.get(p.docId);
     if (!doc) return `unknown document ${p.docId}`;
+    if (doc.status === "superseded" || doc.status === "abrogated") return `source is ${doc.status}`;
+    if (!c.demo && !isCitizenAnswerSource(doc)) return "source is not eligible for citizen answers";
     if (!squash(p.text).includes(squash(cit.quote))) return `quote not found in ${cit.passageId}`;
     if (doc.kind === "demo" && !(c.demo && c.text.ro.startsWith("[DEMO]") && c.text.ru.startsWith("[DEMO]")))
       return `demo source used for non-demo claim`;

@@ -10,15 +10,17 @@ import { DOC_BY_ID } from "../corpus/docs";
 import { retrieve } from "../retrieval";
 import { normalize } from "../text";
 import type { Lang } from "../corpus/types";
-import type { Answer } from "./types";
+import type { Answer, Claim, ValidationReport } from "./types";
+import type { LlmDraft } from "./llm";
 
 /** Repeated questions resolve instantly: corpus answers only depend on the question, lang and corpus. */
 const CACHE = new Map<string, Promise<Answer | null>>();
 const CACHE_MAX = 200;
+type NeedDraft = { need: string; draft: LlmDraft; valid: Claim[]; report: ValidationReport };
 
 /**
  * Model-assisted corpus answer, or `null` when the corpus cannot reach the question and the
- * caller should fall back to the general (uncited) path.
+ * caller should abstain for municipal questions without verified corpus evidence.
  *
  * The deterministic pipeline supplies the curated route, contacts, conflicts and known gaps;
  * the model only drafts the direct-answer claims, which must pass verbatim-quote validation.
@@ -51,23 +53,54 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
   if (!found.grounded) return null;
   // Serving pre-written facts is only safe when retrieval is sure of the subject; otherwise
   // the user gets a confident answer to a question they did not ask.
-  const curated = found.confident && base.claims.length > 0;
+  const curated = found.informationNeeds.length === 1 && found.confident && base.claims.length > 0;
   if (!AI.enabled) return curated ? base : null;
 
   // A passage-only match has no curated topic, so the pipeline's "not covered by the
   // indexed sources" gap no longer applies — the passages below ARE indexed sources.
-  const start = base.topicId ? base : { ...base, missing: [] };
-
-  const topicPassages = base.topicId
-    ? FACTS.filter((f) => f.topic === base.topicId).flatMap((f) => f.cites.map((c) => c.passageId))
-    : [];
-  const candidates = [...new Set([...topicPassages, ...found.passages.map((h) => h.passage.id)])];
+  const start = base.topicId && found.informationNeeds.length === 1
+    ? base
+    : {
+        ...base,
+        topicId: null,
+        topicTitle: null,
+        demoCorpus: false,
+        claims: [],
+        claimIndex: {},
+        sources: [],
+        steps: [],
+        missing: [],
+        conflicts: [],
+        contacts: [],
+        passages: {},
+        docs: {},
+        servicePage: undefined,
+      };
 
   try {
-    const draft = await draftWithModel(question, candidates, signal);
-    const { valid, report } = validateClaims(draft.claims);
+    // Draft each explicit information need against only its own retrieved passages. This
+    // prevents a strong match for one clause from becoming evidence for another clause.
+    const drafts: NeedDraft[] = await Promise.all(found.informationNeeds.map(async (need, index) => {
+      const topicPassages = found.informationNeeds.length === 1 && found.confident && base.topicId
+        ? FACTS.filter((f) => f.topic === base.topicId).flatMap((f) => f.cites.map((c) => c.passageId))
+        : [];
+      const candidates = [...new Set([...topicPassages, ...found.needPassages[index].map((h) => h.passage.id)])];
+      if (!candidates.length) return { need, draft: { claims: [], missing: [] }, valid: [], report: { checked: 0, passed: 0, dropped: [] } as ValidationReport };
+      const draft = await draftWithModel(need, candidates, signal);
+      const checked = validateClaims(draft.claims);
+      return { need, draft, valid: checked.valid, report: checked.report };
+    }));
+    const valid = drafts.flatMap(({ valid }, index) => valid.map((claim, claimIndex) => ({
+      ...claim,
+      id: `llm-${index + 1}-${claimIndex + 1}`,
+    })));
+    const report: ValidationReport = {
+      checked: drafts.reduce((sum, item) => sum + item.report.checked, 0),
+      passed: drafts.reduce((sum, item) => sum + item.report.passed, 0),
+      dropped: drafts.flatMap((item) => item.report.dropped),
+    };
     // Nothing survived validation: keep a curated answer if we have one, otherwise let the
-    // caller answer from general knowledge rather than stonewalling the user.
+    // caller abstain instead of filling the evidence gap from model memory.
     if (!valid.length) return curated ? withFallback(start, "empty") : null;
 
     // Renumber: model claims first, then the route/contact citations already numbered by the pipeline.
@@ -87,7 +120,18 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
         docs[p.docId] = DOC_BY_ID.get(p.docId)!;
       }
 
-    const missing = [...start.missing, ...draft.missing];
+    const missingNeeds = [
+      ...found.missingNeeds,
+      ...drafts.filter((item) => found.needPassages[found.informationNeeds.indexOf(item.need)].length > 0 && item.valid.length === 0).map((item) => item.need),
+    ];
+    const missing = [
+      ...start.missing,
+      ...missingNeeds.map((need) => ({
+        ro: `Nu am putut confirma din pasajele oficiale: „${need}”.`,
+        ru: `Не удалось подтвердить по официальным фрагментам: «${need}».`,
+      })),
+      ...drafts.flatMap((item) => item.draft.missing),
+    ].filter((item, index, all) => all.findIndex((other) => other.ro === item.ro && other.ru === item.ru) === index);
     if (report.dropped.length)
       missing.push({
         ro: `${report.dropped.length} afirmație(i) propuse de model au fost eliminate: citatul nu apărea exact în sursă.`,

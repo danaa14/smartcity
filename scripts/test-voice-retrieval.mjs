@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { DOCS, DOC_BY_ID } from "../src/lib/corpus/docs.ts";
+import { isCitizenAnswerSource } from "../src/lib/corpus/sources.ts";
 import { searchPassages } from "../src/lib/retrieval/index.ts";
 import { retrieve } from "../src/lib/retrieval/index.ts";
 
 // Production voice scope: pages indexed from Annex 1, never Annex 1 itself or demo fixtures.
 const officialIds = DOCS
-  .filter((doc) => doc.kind === "real" && doc.url && doc.id !== "voice-annex-source-list")
+  .filter(isCitizenAnswerSource)
   .map((doc) => doc.id);
 assert.ok(officialIds.length >= 60, "the actual pages linked from Annex 1 should be indexed");
 

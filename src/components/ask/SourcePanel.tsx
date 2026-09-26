@@ -63,11 +63,19 @@ export function SourcePanel({ answer, sel, question, onClose, panelId = "source-
         )}
         <dt className="text-muted">{t({ ro: "Preluat", ru: "Получено" })}</dt>
         <dd>{fmtDate(d.retrievedAt, lang)}</dd>
+        <dt className="text-muted">{t({ ro: "Verificat ultima dată", ru: "Последняя проверка" })}</dt>
+        <dd>{fmtDate(d.lastCheckedAt ?? d.retrievedAt, lang)}</dd>
       </dl>
+
+      {d.status !== "declared_in_force" && d.kind === "real" && (
+        <p className="rounded-lg bg-warn-soft p-2 text-sm text-warn" role="note">
+          {d.statusNote[lang]}
+        </p>
+      )}
 
       <div className="rounded-lg bg-paper p-3">
         <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">
-          {t({ ro: "Textul original", ru: "Оригинальный текст" })} ({p.lang === "ro" ? "română" : p.lang === "ru" ? "русский" : "English"}) — {t({ ro: "fragmentul evidențiat susține afirmația", ru: "выделенный фрагмент подтверждает утверждение" })}
+          {t({ ro: "Textul original", ru: "Оригинальный текст" })} ({p.lang === "ro" ? "română" : p.lang === "ru" ? "русский" : "English"}) — {t({ ro: "fragment din sursă", ru: "фрагмент источника" })}
         </p>
         <blockquote lang={p.lang} className="border-l-4 border-[#d9b400] pl-3">
           <Highlight text={p.text} quote={sel.quote} />

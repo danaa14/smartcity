@@ -5,7 +5,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useLang } from "./LangProvider";
 import { AccountMenu } from "./AccountMenu";
-import { LangSwitch } from "./LangSwitch";
 import { Icon } from "./chat/Icon";
 
 export function SiteHeader() {
@@ -30,7 +29,6 @@ export function SiteHeader() {
         </nav>
       )}
       <AccountMenu />
-      <LangSwitch />
     </header>
   );
 }

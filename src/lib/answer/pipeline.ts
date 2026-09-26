@@ -37,7 +37,7 @@ function factToClaim(f: Fact): Claim {
  * validate every claim against its passages → detect conflicts and gaps → build the route.
  * An LLM drafter can replace `draft` later; validation and gap/conflict detection stay the same.
  */
-export function answerQuestion(question: string, uiLang?: Lang, options: { includeDemo?: boolean } = {}): Answer {
+export function answerQuestion(question: string, uiLang?: Lang, options: { includeDemo?: boolean; forceMissing?: boolean } = {}): Answer {
   const q = question.trim().slice(0, 500);
   const questionLang = uiLang ?? detectLang(q);
   const aspects = detectAspects(q);
@@ -60,6 +60,7 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
     },
   };
 
+  if (options.forceMissing) return missingAnswer(q, base);
   if (!top) return missingAnswer(q, base);
 
   const topic = top.topic;

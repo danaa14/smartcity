@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DOCS, DOC_BY_ID } from "@/lib/corpus/docs";
-import { searchPassages } from "@/lib/retrieval";
+import { decomposeQuestion, officialNextSteps, searchPassages } from "@/lib/retrieval";
+import { isCitizenAnswerSource } from "@/lib/corpus/sources";
 import type { Lang, Passage } from "@/lib/corpus/types";
 
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ const searchHits = new Map<string, number[]>();
 // Only actual pages and documents are citizen-answer sources. Annex 1 is a directory;
 // the Annex PDF itself and all fictitious/demo records must never answer service questions.
 const CITIZEN_SOURCE_IDS = DOCS
-  .filter((doc) => doc.kind === "real" && doc.url && doc.id !== "voice-annex-source-list")
+  .filter(isCitizenAnswerSource)
   .map((doc) => doc.id);
 
 function clientKey(req: Request): string {
@@ -123,12 +124,7 @@ export async function search(req: Request) {
   const query = typeof body?.query === "string" ? body.query.trim().slice(0, 300) : "";
   if (!query) return NextResponse.json({ error: "invalid_query" }, { status: 400 });
   const lang: Lang = body?.lang === "ru" ? "ru" : "ro";
-  const needs = query
-    .replace(/[;?]+/g, ",")
-    .split(/\s+(?:and|și|si|iar|и)\s+|,/iu)
-    .map((part) => part.trim())
-    .filter((part) => part.split(/\s+/).length >= 3);
-  const informationNeeds = needs.length > 1 ? needs : [query];
+  const informationNeeds = decomposeQuestion(query);
   const missingParts: string[] = [];
   const deduped = new Map<string, { passage: Passage; score: number; questionPart: string }>();
   for (const questionPart of informationNeeds) {
@@ -153,6 +149,8 @@ export async function search(req: Request) {
         language: doc.lang,
         publicationDate: doc.publishedAt ?? doc.revisedAt ?? null,
         lastCheckedAt: doc.lastCheckedAt ?? doc.retrievedAt,
+        currentness: doc.status === "declared_in_force" ? "declared-current" : "unverified",
+        statusNote: doc.statusNote[lang],
         page: passage.page,
         section: passage.section,
         locator: passage.locator[lang],
@@ -163,5 +161,9 @@ export async function search(req: Request) {
   const fallback = lang === "ru"
     ? "В проиндексированных официальных источниках не найден релевантный фрагмент. Позвоните в Единое окно по номеру, указанному на экране."
     : "În sursele oficiale indexate nu am găsit un pasaj relevant. Sună la Ghișeul Unic folosind numărul afișat pe ecran.";
-  return NextResponse.json({ results, fallback, missingParts }, { headers: { "cache-control": "no-store" } });
+  const missingNextSteps = missingParts.flatMap((part) => officialNextSteps(part, lang));
+  const nextSteps = missingParts.length
+    ? [...new Map(missingNextSteps.map((step) => [`${step.url}\0${step.title}`, step] as const)).values()]
+    : results.length ? [] : officialNextSteps(query, lang);
+  return NextResponse.json({ results, fallback, missingParts, nextSteps }, { headers: { "cache-control": "no-store" } });
 }

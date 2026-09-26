@@ -6,9 +6,10 @@ import type { Lang } from "@/lib/corpus/types";
 
 type VoiceStatus = "idle" | "requesting-microphone" | "connecting" | "listening" | "thinking" | "speaking" | "ended" | "error";
 type VoiceLine = { id: number; role: "user" | "assistant"; text: string };
-type VoiceSource = { chunkId: string; questionPart: string; document: string; url: string | null; agency: string; language: string; lastCheckedAt: string; publicationDate: string | null; page?: number; section?: string; locator: string; passage: string; score: number };
-type VoiceSourceGroup = { id: number; query: string; results: VoiceSource[]; fallback: string; missingParts: string[] };
-type SearchResult = { results: VoiceSource[]; fallback: string; missingParts: string[] };
+type VoiceSource = { chunkId: string; questionPart: string; document: string; url: string | null; agency: string; language: string; lastCheckedAt: string; publicationDate: string | null; currentness: "declared-current" | "unverified"; statusNote: string; page?: number; section?: string; locator: string; passage: string; score: number };
+type VoiceNextStep = { text: string; title: string; agency: string; url: string; passage: string; locator: string; lastCheckedAt: string; status: string; statusNote: string };
+type VoiceSourceGroup = { id: number; query: string; results: VoiceSource[]; fallback: string; missingParts: string[]; nextSteps: VoiceNextStep[] };
+type SearchResult = { results: VoiceSource[]; fallback: string; missingParts: string[]; nextSteps: VoiceNextStep[] };
 
 const LABELS: Record<Lang, Record<VoiceStatus, string>> = {
   ro: { idle: "Pregătit", "requesting-microphone": "Solicit accesul la microfon…", connecting: "Se conectează…", listening: "Ascult · microfon pornit", thinking: "Verific sursele… · microfon în pauză", speaking: "Vorbesc · microfon în pauză", ended: "Apel încheiat · microfon oprit", error: "Conexiune indisponibilă" },
@@ -139,12 +140,12 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       });
       if (!response.ok) throw new Error("search_unavailable");
       const result = await response.json() as SearchResult;
-      setSourceGroups((current) => [...current, { id: ++lineSequence.current, query, results: result.results, fallback: result.results.length ? "" : result.fallback, missingParts: result.missingParts ?? [] }]);
+      setSourceGroups((current) => [...current, { id: ++lineSequence.current, query, results: result.results, fallback: result.results.length ? "" : result.fallback, missingParts: result.missingParts ?? [], nextSteps: result.nextSteps ?? [] }]);
       sendEvent({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(result) } });
       sendEvent({ type: "response.create" });
     } catch {
       setError(COPY[selectedLang.current].searchError);
-      setSourceGroups((current) => [...current, { id: ++lineSequence.current, query: "", results: [], fallback: COPY[selectedLang.current].noSources, missingParts: [] }]);
+      setSourceGroups((current) => [...current, { id: ++lineSequence.current, query: "", results: [], fallback: COPY[selectedLang.current].noSources, missingParts: [], nextSteps: [] }]);
       sendEvent({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify({ results: [], fallback: COPY[selectedLang.current].noSources }) } });
       sendEvent({ type: "response.create" });
     } finally {
@@ -361,10 +362,16 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
             {group.query && <p className="voice-call-source-query">{group.query}</p>}
             {group.fallback && <p>{group.fallback}</p>}
             {group.missingParts.map((part) => <p key={part}>{copy.noSources} <strong>{part}</strong></p>)}
+            {group.nextSteps.map((step, index) => <div key={step.title + "-" + index} className="voice-call-next-step">
+              <p>{step.text}</p>
+              <a href={step.url} target="_blank" rel="noreferrer">{step.title} · {step.agency} ↗</a>
+              <details><summary>{copy.expand}</summary><blockquote>{step.passage}</blockquote><small>{copy.page}: {step.locator} · {copy.checked}: {new Date(step.lastCheckedAt).toLocaleDateString(lang === "ru" ? "ru-MD" : "ro-MD")}</small><p>{step.statusNote}</p></details>
+            </div>)}
             {group.results.map((source, index) => (
               <details key={`${source.page}-${source.section}-${index}`}>
               <summary>{source.document} · {source.agency} · {source.locator}</summary>
               <p>{source.passage}</p>
+              {source.currentness === "unverified" && <p role="note">{source.statusNote}</p>}
               <small>{copy.checked}: {new Date(source.lastCheckedAt).toLocaleDateString(lang === "ru" ? "ru-MD" : "ro-MD")}{source.publicationDate ? ` · ${source.publicationDate}` : ""}</small>
               {source.url && <a href={source.url} target="_blank" rel="noreferrer">{source.url} ↗</a>}
               </details>

@@ -1,9 +1,10 @@
-import { FACTS } from "../corpus/facts";
+import { FACTS, FACT_BY_ID } from "../corpus/facts";
 import { PASSAGES } from "../corpus/passages";
 import { DOCS, DOC_BY_ID } from "../corpus/docs";
 import { TOPICS, OUT_OF_CORPUS_HINTS } from "../corpus/topics";
 import type { Aspect, Passage, Topic } from "../corpus/types";
 import { normalize, tokens } from "../text";
+import { isCitizenAnswerSource } from "../corpus/sources";
 
 /**
  * Words that appear in every civic question and so identify no subject on their own.
@@ -28,6 +29,17 @@ const STOP = new Set([
 
 function contentTokens(s: string): string[] {
   return tokens(s).filter((t) => !STOP.has(t));
+}
+
+/** Split only on explicit punctuation/conjunctions and keep short fragments attached. */
+export function decomposeQuestion(question: string): string[] {
+  const raw = question
+    .replace(/[?؟]+/g, ",")
+    .split(/[;,]+|\s+(?:and|și|si|iar|plus|и|а также)\s+/iu)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (raw.length < 2 || raw.some((part) => contentTokens(part).length === 0)) return [question.trim()];
+  return [...new Set(raw)];
 }
 
 const ASPECT_CUES: Record<Aspect, string[]> = {
@@ -112,6 +124,30 @@ export function outOfCorpusHint(question: string) {
   const qn = normalize(question);
   const qt = tokens(question);
   return OUT_OF_CORPUS_HINTS.find((h) => h.keywords.some((k) => matches(qn, qt, k)));
+}
+
+export function officialNextSteps(question: string, lang: "ro" | "ru") {
+  const factIds = outOfCorpusHint(question)?.contactFactIds ?? ["p-ghiseu"];
+  return factIds.flatMap((id) => {
+    const fact = FACT_BY_ID.get(id);
+    if (!fact) return [];
+    return fact.cites.flatMap((citation) => {
+      const passage = PASSAGES.find((item) => item.id === citation.passageId);
+      const doc = passage && DOC_BY_ID.get(passage.docId);
+      if (!passage || !doc || !isCitizenAnswerSource(doc)) return [];
+      return [{
+        text: fact.text[lang],
+        title: doc.titleTranslation?.[lang] ?? doc.title,
+        agency: doc.publisher,
+        url: doc.url!,
+        passage: citation.quote,
+        locator: passage.locator[lang],
+        lastCheckedAt: doc.lastCheckedAt ?? doc.retrievedAt,
+        status: doc.status,
+        statusNote: doc.statusNote[lang],
+      }];
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +270,10 @@ export interface Retrieval {
   topicScore: number;
   candidates: { topicId: string; score: number }[];
   passages: PassageHit[];
+  /** Each explicit sub-question is searched independently; uncovered parts are never hidden. */
+  informationNeeds: string[];
+  needPassages: PassageHit[][];
+  missingNeeds: string[];
   /** Worth drafting cited claims. Deliberately permissive: if the passages turn out not to
    *  answer the question the drafter returns nothing and the caller falls back to prose. */
   grounded: boolean;
@@ -253,9 +293,19 @@ const MIN_TOKENS_FOR_COVERAGE = 3;
 export function retrieve(question: string, aspects = detectAspects(question)): Retrieval {
   const ranked = rankTopics(question, aspects).filter((hit) => hit.topic.kind !== "demo");
   const top = ranked[0] && ranked[0].score >= TOPIC_WEAK ? ranked[0] : null;
-  const officialIds = DOCS.filter((doc) => doc.kind === "real" && doc.url && doc.id !== "voice-annex-source-list").map((doc) => doc.id);
-  const passages = searchPassages(question, 8, officialIds);
-  const coverage = passages[0]?.coverage ?? 0;
+  const officialIds = DOCS.filter(isCitizenAnswerSource).map((doc) => doc.id);
+  const informationNeeds = decomposeQuestion(question);
+  const needHits = informationNeeds.map((need) =>
+    searchPassages(need, 8, officialIds).filter(({ coverage, score }) => score > 0 && coverage >= 0.16),
+  );
+  const missingNeeds = informationNeeds.filter((_, i) => needHits[i].length === 0);
+  const byPassage = new Map<string, PassageHit>();
+  needHits.forEach((hits) => hits.slice(0, informationNeeds.length > 1 ? 3 : 8).forEach((hit) => {
+    const previous = byPassage.get(hit.passage.id);
+    if (!previous || hit.score > previous.score) byPassage.set(hit.passage.id, hit);
+  }));
+  const passages = [...byPassage.values()].sort((a, b) => b.coverage - a.coverage || b.score - a.score).slice(0, 8);
+  const coverage = Math.max(0, ...needHits.map((hits) => hits[0]?.coverage ?? 0));
   const score = top?.score ?? 0;
   const enoughWords = new Set(contentTokens(question)).size >= MIN_TOKENS_FOR_COVERAGE;
 
@@ -264,7 +314,11 @@ export function retrieve(question: string, aspects = detectAspects(question)): R
     topicScore: score,
     candidates: ranked.slice(0, 3).map((h) => ({ topicId: h.topic.id, score: h.score })),
     passages,
-    grounded: (top?.specific ?? 0) >= SPECIFIC_CONFIDENT || (enoughWords && coverage >= COVERAGE_ALONE),
+    informationNeeds,
+    needPassages: needHits,
+    missingNeeds,
+    grounded: needHits.some((hits) => hits.length > 0) &&
+      ((top?.specific ?? 0) >= SPECIFIC_CONFIDENT || (enoughWords && coverage >= COVERAGE_ALONE) || informationNeeds.length > 1),
     confident: (top?.specific ?? 0) >= SPECIFIC_CONFIDENT,
   };
 }

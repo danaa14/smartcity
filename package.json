@@ -9,6 +9,7 @@
     "lint": "eslint",
     "verify:corpus": "tsx scripts/verify-corpus.ts",
     "test:answers": "tsx scripts/test-answers.ts",
+    "test:grounding": "node --import tsx scripts/test-grounding-rules.mjs",
     "test:e2e": "node scripts/e2e.mjs",
     "test:docchat": "node scripts/doc-chat-check.mjs",
     "probe:annex": "python3 scripts/probe_annex.py",
