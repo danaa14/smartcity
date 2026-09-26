@@ -1,0 +1,33 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({headless:true});
+const base = process.env.TEST_BASE_URL || 'http://localhost:3105';
+for (const width of [1440,390,320]) {
+ const page = await browser.newPage({viewport:{width,height:900}});
+ const errors=[]; page.on('pageerror', e=>errors.push(e.message));
+ await page.goto(base); await page.waitForTimeout(800);
+ const menu=page.getByRole('button',{name:'Deschide meniul'});
+ await menu.click();
+ const drawer=page.getByRole('dialog',{name:'Istoric conversații'});
+ await drawer.waitFor(); await page.waitForTimeout(350);
+ const box=await drawer.boundingBox(); assert(box.x>0 && box.width<width*.82);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:`artifacts/menu-${width}.png`});
+ await page.getByRole('button',{name:'Русский',exact:true}).click();
+ await page.getByRole('heading',{name:'История диалогов'}).waitFor();
+ await page.getByRole('button',{name:'Română',exact:true}).click();
+ await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+ assert.equal(await drawer.isVisible(),false); assert(await menu.evaluate(e=>e===document.activeElement));
+ await menu.click(); await page.waitForTimeout(300); await page.mouse.click(5,400); await page.waitForTimeout(300); assert.equal(await drawer.isVisible(),false);
+ await page.evaluate(()=>localStorage.setItem('pefir:conversations:v1:guest',JSON.stringify([{version:1,id:'test-chat',ownerId:'guest',title:'Conversație salvată',updatedAt:new Date().toISOString(),turns:[{kind:'ask',id:1,question:'Întrebarea precedentă',failed:true}]}])));
+ await page.reload(); await page.waitForTimeout(700); await menu.click();
+ await page.getByRole('button',{name:/Conversație salvată/}).click();
+ await page.locator('.user-message').filter({hasText:'Întrebarea precedentă'}).waitFor();
+ await menu.click(); await page.getByRole('button',{name:'Conversație nouă',exact:true}).click();
+ await page.getByRole('heading',{name:/Hai să vorbim/}).waitFor();
+ await menu.click(); await page.getByRole('button',{name:'Conectare cu Google',exact:true}).click();
+ await page.getByRole('alert').filter({hasText:'Conectarea Google nu este disponibilă'}).waitFor();
+ assert.deepEqual(errors,[]); console.log(`PASS ${width}px: drawer, language, Escape, focus, overlay, restore, new chat, auth fallback`);
+ await page.close();
+}
+await browser.close();

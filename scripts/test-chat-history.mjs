@@ -1,0 +1,23 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage();
+const requests=[];
+await page.route('**/api/ask',async route=>{
+ const body=route.request().postDataJSON(); requests.push(body);
+ const answer={question:body.question,questionLang:'ro',kind:'prose',prose:'Răspuns salvat pentru verificare.',status:'supported',topicId:null,topicTitle:null,demoCorpus:false,summary:{ro:'Răspuns salvat pentru verificare.',ru:'Ответ.'},claims:[],claimIndex:{},sources:[],steps:[],missing:[],conflicts:[],contacts:[],requestedAspects:[],passages:{},docs:{},validation:{checked:0,passed:0,dropped:[]},engine:{mode:'general',label:{ro:'Test',ru:'Тест'},retrieval:{topicScore:0,candidates:[]}},generatedAt:new Date().toISOString()};
+ await route.fulfill({contentType:'text/event-stream',body:`data: ${JSON.stringify({type:'answer',answer})}\n\n`});
+});
+await page.goto(process.env.TEST_BASE_URL||'http://localhost:3105'); await page.waitForTimeout(600);
+await page.locator('#chat-message').fill('Cum depun o petiție?'); await page.getByRole('button',{name:'Trimite întrebarea'}).click();
+await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor(); await page.waitForTimeout(150);
+await page.reload(); await page.waitForTimeout(600);
+await page.getByRole('button',{name:'Deschide meniul'}).click(); await page.getByRole('button',{name:/Cum depun o petiție/}).click();
+await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor(); await page.waitForTimeout(300);
+await page.locator('#chat-message').fill('Și apoi?'); await page.getByRole('button',{name:'Trimite întrebarea'}).click();
+await page.waitForTimeout(500);
+assert.equal(requests[1].history[0].content,'Cum depun o petiție?'); assert.equal(requests[1].history[1].content,'Răspuns salvat pentru verificare.');
+const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pefir:conversations:v1:guest')));
+assert.equal(saved.length,1); assert.equal(saved[0].turns.length,2);
+console.log('PASS: streamed answer persisted, restored after reload, context retained when continuing');
+await browser.close();
