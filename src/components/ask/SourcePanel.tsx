@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { useLang } from "../LangProvider";
 import type { Answer } from "@/lib/answer/types";
@@ -8,7 +8,7 @@ import { fmtDate } from "@/lib/i18n";
 import { DemoBadge, ExternalLink, RealBadge } from "../ui";
 import { Highlight, type Selection } from "./AnswerView";
 
-export function SourcePanel({ answer, sel, question, onClose }: { answer: Answer; sel: Selection; question: string; onClose?: () => void }) {
+export function SourcePanel({ answer, sel, question, onClose, panelId = "source-panel" }: { panelId?: string; answer: Answer; sel: Selection; question: string; onClose?: () => void }) {
   const { lang, t } = useLang();
   const p = answer.passages[sel.passageId];
   const d = answer.docs[p.docId];
@@ -16,7 +16,7 @@ export function SourcePanel({ answer, sel, question, onClose }: { answer: Answer
   const translation = p.unofficialTranslation?.[lang];
 
   return (
-    <div id="source-panel" tabIndex={-1} className="card max-h-[85vh] space-y-3 overflow-y-auto p-4" aria-live="polite">
+    <div id={panelId} tabIndex={-1} className="card max-h-[85vh] space-y-3 overflow-y-auto p-4" aria-live="polite">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wide text-muted">
@@ -113,6 +113,7 @@ function CitationReport({ passageId, claimId, question }: { passageId: string; c
   const { lang, t } = useLang();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const uid = useId();
   const [comment, setComment] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [err, setErr] = useState("");
@@ -167,10 +168,10 @@ function CitationReport({ passageId, claimId, question }: { passageId: string; c
             ))}
           </fieldset>
           {err && <p role="alert" className="text-sm font-semibold text-bad">{err}</p>}
-          <label className="field-label text-sm" htmlFor={`cm-${passageId}`}>
+          <label className="field-label text-sm" htmlFor={`cm-${uid}-${passageId}`}>
             {t({ ro: "Comentariu (opțional)", ru: "Комментарий (необязательно)" })}
           </label>
-          <textarea id={`cm-${passageId}`} className="input text-sm" rows={2} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <textarea id={`cm-${uid}-${passageId}`} className="input text-sm" rows={2} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} />
           <button className="btn btn-secondary min-h-10 text-sm" disabled={state === "sending"}>
             {state === "sending" ? t({ ro: "Se trimite…", ru: "Отправка…" }) : t({ ro: "Trimite semnalarea", ru: "Отправить" })}
           </button>

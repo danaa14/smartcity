@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, type RefObject } from "react";
+import { Fragment, useId, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { useLang } from "../LangProvider";
 import type { Answer, Claim } from "@/lib/answer/types";
@@ -15,9 +15,12 @@ export interface Selection {
   quote: string;
 }
 
-export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer; headingRef: RefObject<HTMLHeadingElement | null>; onFollowUp: (q: string) => void }) {
+export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: { compact?: boolean; answer: Answer; headingRef: RefObject<HTMLHeadingElement | null>; onFollowUp: (q: string) => void }) {
   const { lang, t } = useLang();
-  const wide = useMediaQuery("(min-width: 1024px)");
+  const screenWide = useMediaQuery("(min-width: 1024px)");
+  const wide = screenWide && !compact;
+  const uid = useId();
+  const [showDetails, setShowDetails] = useState(false);
   const [sel, setSel] = useState<Selection | null>(null);
   const [xray, setXray] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -32,7 +35,7 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
     lastTrigger.current = trigger;
     setSel(s);
     if (!wide) dialogRef.current?.showModal();
-    else document.getElementById("source-panel")?.focus();
+    else document.getElementById(`${uid}-source-panel`)?.focus();
   };
 
   const closeDialog = () => {
@@ -85,19 +88,19 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
     </>
   );
 
-  const panel = current && <SourcePanel answer={answer} sel={current} question={answer.question} onClose={wide ? undefined : closeDialog} />;
+  const panel = current && <SourcePanel panelId={`${uid}-source-panel`} answer={answer} sel={current} question={answer.question} onClose={wide ? undefined : closeDialog} />;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-      <article aria-labelledby="ans-h" className="space-y-4">
+    <div className={compact ? "compact-answer" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"}>
+      <article aria-labelledby={`${uid}-ans-h`} className="space-y-4">
         <div className="card space-y-3 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={answer.status} lang={lang} />
             {answer.demoCorpus && <DemoBadge lang={lang} />}
             {answer.topicTitle && <span className="text-sm text-muted">{answer.topicTitle[lang]}</span>}
           </div>
-          <h2 id="ans-h" ref={headingRef} tabIndex={-1} className="text-lg font-bold sm:text-xl">
-            {answer.summary[lang]}
+          <h2 id={`${uid}-ans-h`} ref={headingRef} tabIndex={-1} className="text-lg font-bold sm:text-xl">
+            {compact ? (answer.topicTitle?.[lang] ?? t({ ro: "Hai să găsim o altă cale", ru: "Попробуем другой вопрос" })) : answer.summary[lang]}
           </h2>
           {answer.demoCorpus && (
             <Notice tone="demo" title={t({ ro: "Corpus DEMO fictiv", ru: "Вымышленный DEMO-корпус" })}>
@@ -114,10 +117,10 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-bold">{t({ ro: "Ce spun sursele", ru: "Что говорят источники" })}</h3>
-                <button type="button" className="btn btn-quiet min-h-9 px-2 text-sm" aria-pressed={xray} onClick={() => setXray((x) => !x)}>
+                {!compact && <button type="button" className="btn btn-quiet min-h-9 px-2 text-sm" aria-pressed={xray} onClick={() => setXray((x) => !x)}>
                   <span aria-hidden="true">{xray ? "◉" : "○"}</span>
                   {t({ ro: "Radiografie: arată citatele sub fiecare afirmație", ru: "Рентген: показать цитаты под каждым утверждением" })}
-                </button>
+                </button>}
               </div>
               <ul className="space-y-2">
                 {answer.claims.map((c) => (
@@ -131,8 +134,8 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
         </div>
 
         {answer.conflicts.map((cf) => (
-          <section key={cf.group} aria-labelledby={`cf-${cf.group}`} className="card border-bad p-4 sm:p-5">
-            <h3 id={`cf-${cf.group}`} className="flex items-center gap-2 font-bold text-bad">
+          <section key={cf.group} aria-labelledby={`${uid}-cf-${cf.group}`} className="card border-bad p-4 sm:p-5">
+            <h3 id={`${uid}-cf-${cf.group}`} className="flex items-center gap-2 font-bold text-bad">
               <span aria-hidden="true">⚠</span>
               {t({ ro: "Posibilă contradicție între surse", ru: "Возможное противоречие между источниками" })}
             </h3>
@@ -174,9 +177,11 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
           </section>
         ))}
 
-        {answer.steps.length > 0 && (
-          <section aria-labelledby="gps-h" className="card p-4 sm:p-5">
-            <h3 id="gps-h" className="flex items-center gap-2 font-bold">
+        {compact && (answer.steps.length > 0 || answer.contacts.length > 0 || answer.servicePage) && <button type="button" className="answer-details-toggle" aria-expanded={showDetails} onClick={() => setShowDetails((v) => !v)}>{showDetails ? t({ ro: "Mai puține detalii −", ru: "Меньше деталей −" }) : t({ ro: "Pașii următori și contacte +", ru: "Следующие шаги и контакты +" })}</button>}
+
+        {(!compact || showDetails) && answer.steps.length > 0 && (
+          <section aria-labelledby={`${uid}-gps-h`} className="card p-4 sm:p-5">
+            <h3 id={`${uid}-gps-h`} className="flex items-center gap-2 font-bold">
               <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-brand text-sm text-white">➜</span>
               {t({ ro: "Traseul dvs. — pașii următori", ru: "Ваш маршрут — следующие шаги" })}
             </h3>
@@ -198,10 +203,10 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
         )}
 
         {answer.missing.length > 0 && (
-          <section aria-labelledby="miss-h" className="card border-none p-4 sm:p-5">
-            <h3 id="miss-h" className="flex items-center gap-2 font-bold">
+          <section aria-labelledby={`${uid}-miss-h`} className="card border-none p-4 sm:p-5">
+            <h3 id={`${uid}-miss-h`} className="flex items-center gap-2 font-bold">
               <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-none-soft">∅</span>
-              {t({ ro: "Ce lipsește din corpus", ru: "Чего нет в корпусе" })}
+              {t({ ro: "Ce nu am putut confirma", ru: "Что не удалось подтвердить" })}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-6">
               {answer.missing.map((m, i) => (
@@ -214,9 +219,9 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
           </section>
         )}
 
-        {(answer.servicePage || answer.contacts.length > 0) && (
-          <section aria-labelledby="where-h" className="card p-4 sm:p-5">
-            <h3 id="where-h" className="font-bold">{t({ ro: "Unde mergeți / pe cine sunați", ru: "Куда обратиться / куда звонить" })}</h3>
+        {(!compact || showDetails) && (answer.servicePage || answer.contacts.length > 0) && (
+          <section aria-labelledby={`${uid}-where-h`} className="card p-4 sm:p-5">
+            <h3 id={`${uid}-where-h`} className="font-bold">{t({ ro: "Unde mergeți / pe cine sunați", ru: "Куда обратиться / куда звонить" })}</h3>
             {answer.servicePage && (
               <p className="mt-2">
                 <ExternalLink href={answer.servicePage.url} lang={lang} className="btn btn-secondary">
@@ -279,6 +284,7 @@ export function AnswerView({ answer, headingRef, onFollowUp }: { answer: Answer;
 }
 
 function FollowUps({ answer, onFollowUp }: { answer: Answer; onFollowUp: (q: string) => void }) {
+  const uid = useId();
   const { lang, t } = useLang();
   const map: Record<string, { ro: string; ru: string }[]> = {
     "water-contract": [
@@ -292,8 +298,8 @@ function FollowUps({ answer, onFollowUp }: { answer: Answer; onFollowUp: (q: str
   const list = answer.topicId ? map[answer.topicId] : undefined;
   if (!list && answer.status !== "missing") return null;
   return (
-    <section aria-labelledby="fu-h" className="space-y-2">
-      <h3 id="fu-h" className="font-bold">{answer.status === "missing" ? t({ ro: "Ce pot verifica în schimb", ru: "Что я могу проверить вместо этого" }) : t({ ro: "Întrebări înrudite", ru: "Связанные вопросы" })}</h3>
+    <section aria-labelledby={`${uid}-fu-h`} className="space-y-2">
+      <h3 id={`${uid}-fu-h`} className="font-bold">{answer.status === "missing" ? t({ ro: "Ce pot verifica în schimb", ru: "Что я могу проверить вместо этого" }) : t({ ro: "Întrebări înrudite", ru: "Связанные вопросы" })}</h3>
       <ul className="flex flex-wrap gap-2">
         {(list ?? [
           { ro: "Cum depun o petiție la primărie?", ru: "Как подать петицию в примэрию?" },
