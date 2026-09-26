@@ -17,6 +17,9 @@ export interface Selection {
 
 export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: { compact?: boolean; answer: Answer; headingRef: RefObject<HTMLHeadingElement | null>; onFollowUp: (q: string) => void }) {
   const { lang, t } = useLang();
+  
+  const answerLang = answer.questionLang;
+
   const screenWide = useMediaQuery("(min-width: 1024px)");
   const wide = screenWide && !compact;
   const uid = useId();
@@ -68,14 +71,14 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
 
   const claimBody = (claim: Claim) => (
     <>
-      <span>{claim.text[lang]}</span>
+      <span>{claim.text[answerLang]}</span>
       {markers(claim)}
       {claim.uncertainty && (
         <span className="mt-1 flex gap-1.5 text-sm text-warn">
           <span aria-hidden="true">!</span>
           <span>
             <span className="font-semibold">{t({ ro: "Incertitudine: ", ru: "Неопределённость: " })}</span>
-            {claim.uncertainty[lang]}
+            {claim.uncertainty[answerLang]}
           </span>
         </span>
       )}
@@ -127,10 +130,10 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={answer.status} lang={lang} />
             {answer.demoCorpus && <DemoBadge lang={lang} />}
-            {answer.topicTitle && <span className="text-sm text-muted">{answer.topicTitle[lang]}</span>}
+            {answer.topicTitle && <span className="text-sm text-muted">{answer.topicTitle[answerLang]}</span>}
           </div>
           <h2 id={`${uid}-ans-h`} ref={headingRef} tabIndex={-1} className="text-lg font-bold sm:text-xl">
-            {compact ? (answer.topicTitle?.[lang] ?? t({ ro: "Hai să găsim o altă cale", ru: "Попробуем другой вопрос" })) : answer.summary[lang]}
+            {compact ? (answer.topicTitle?.[answerLang] ?? t({ ro: "Hai să găsim o altă cale", ru: "Попробуем другой вопрос" })) : answer.summary[answerLang]}
           </h2>
           {answer.demoCorpus && (
             <Notice tone="demo" title={t({ ro: "Corpus DEMO fictiv", ru: "Вымышленный DEMO-корпус" })}>
@@ -169,7 +172,7 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
               <span aria-hidden="true">⚠</span>
               {t({ ro: "Posibilă contradicție între surse", ru: "Возможное противоречие между источниками" })}
             </h3>
-            <p className="mt-1 text-sm">{cf.explanation[lang]}</p>
+            <p className="mt-1 text-sm">{cf.explanation[answerLang]}</p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {cf.sides.map((s, i) => {
                 const p = answer.passages[s.passageId];
@@ -223,7 +226,7 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
                   <span aria-hidden="true" className="z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-brand bg-white font-bold text-brand">{i + 1}</span>
                   <div className="pt-1">
                     <span className="sr-only">{t({ ro: "Pasul", ru: "Шаг" })} {i + 1}: </span>
-                    <span>{s.text[lang]}</span>
+                    <span>{s.text[answerLang]}</span>
                     {s.claimIds.map((id) => answer.claimIndex[id] && <Fragment key={id}>{markers(answer.claimIndex[id])}</Fragment>)}
                   </div>
                 </li>
@@ -240,7 +243,7 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-6">
               {answer.missing.map((m, i) => (
-                <li key={i}>{m[lang]}</li>
+                <li key={i}>{m[answerLang]}</li>
               ))}
             </ul>
             <p className="mt-2 text-sm text-muted">
@@ -254,8 +257,8 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
             <h3 id={`${uid}-where-h`} className="font-bold">{t({ ro: "Unde mergeți / pe cine sunați", ru: "Куда обратиться / куда звонить" })}</h3>
             {answer.servicePage && (
               <p className="mt-2">
-                <ExternalLink href={answer.servicePage.url} lang={lang} className="btn btn-secondary">
-                  {answer.servicePage.label[lang]}
+                <ExternalLink href={answer.servicePage.url} lang={answerLang} className="btn btn-secondary">
+                  {answer.servicePage.label[answerLang]}
                 </ExternalLink>
               </p>
             )}
@@ -358,8 +361,8 @@ function FollowUps({ answer, onFollowUp }: { answer: Answer; onFollowUp: (q: str
           { ro: "Ce acte îmi trebuie pentru contractul de apă la apartament?", ru: "Какие документы нужны для договора на воду в квартире?" },
         ]).map((q) => (
           <li key={q.ro}>
-            <button type="button" onClick={() => onFollowUp(q[lang])} className="rounded-full border border-brand bg-white px-3 py-1.5 text-sm text-brand hover:bg-brand-soft">
-              {q[lang]}
+            <button type="button" onClick={() => onFollowUp(q[answer.questionLang])} className="rounded-full border border-brand bg-white px-3 py-1.5 text-sm text-brand hover:bg-brand-soft">
+              {q[answer.questionLang]}
             </button>
           </li>
         ))}
