@@ -9,6 +9,7 @@ import * as reportAudio from "@/server/api/report-audio";
 import * as reportVideo from "@/server/api/report-video";
 import * as review from "@/server/api/review";
 import * as scanReview from "@/server/api/scan-review";
+import * as staffAuth from "@/server/api/staff-auth";
 import * as tickets from "@/server/api/tickets";
 import * as ticketsId from "@/server/api/tickets-id";
 import * as ticketsIdMediaFile from "@/server/api/tickets-id-media-file";
@@ -41,6 +42,11 @@ function pick(segments: string[], method: string): Handler | null {
   if (a === "report" && b === "video" && !c) return method === "POST" ? call(reportVideo.POST) : null;
   if (a === "review" && !b) return method === "PATCH" ? call(review.PATCH) : null;
   if (a === "scan" && b === "review" && !c) return method === "POST" ? call(scanReview.POST) : null;
+  if (a === "staff" && b === "auth" && !c) {
+    if (method === "POST") return call(staffAuth.POST);
+    if (method === "DELETE") return call(staffAuth.DELETE);
+    return null;
+  }
   if (a === "tickets" && !b) {
     if (method === "GET") return call(tickets.GET);
     if (method === "POST") return call(tickets.POST);
