@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { STAFF_COOKIE, checkPassword, clearThrottle, issueToken, staffPassword, throttle } from "@/lib/staff/auth";
+import { STAFF_COOKIE, checkPassword, clearFailures, isLocked, issueToken, recordFailure, staffPassword } from "@/lib/staff/auth";
 
 export const runtime = "nodejs";
 
@@ -12,14 +12,15 @@ export async function POST(req: Request) {
   if (!password) return NextResponse.json({ error: "not_configured" }, { status: 503 });
 
   const ip = clientIp(req);
-  if (!throttle(ip)) return NextResponse.json({ error: "too_many_attempts" }, { status: 429 });
+  if (isLocked(ip)) return NextResponse.json({ error: "too_many_attempts" }, { status: 429 });
 
   const body = await req.json().catch(() => null);
   if (!checkPassword((body as { password?: unknown } | null)?.password, password)) {
+    recordFailure(ip);
     return NextResponse.json({ error: "invalid" }, { status: 401 });
   }
 
-  clearThrottle(ip);
+  clearFailures(ip);
   const token = issueToken(password);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(STAFF_COOKIE, token.value, {

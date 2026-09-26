@@ -54,20 +54,32 @@ export async function staffSession(): Promise<"ok" | "denied" | "unset"> {
   return verifyToken(token, password) ? "ok" : "denied";
 }
 
-const attempts = new Map<string, { count: number; until: number }>();
+const failures = new Map<string, { count: number; until: number }>();
+const MAX_FAILURES = 8;
+const WINDOW_MS = 10 * 60 * 1000;
 
-/** Coarse brute-force brake: 8 tries per IP per 10 minutes, in memory only. */
-export function throttle(ip: string): boolean {
-  const now = Date.now();
-  const rec = attempts.get(ip);
-  if (!rec || rec.until < now) {
-    attempts.set(ip, { count: 1, until: now + 10 * 60 * 1000 });
-    return true;
+/**
+ * Brute-force brake, in memory only. Counts failures rather than attempts, so a correct
+ * password always works until the lockout is genuinely earned — an attempt counter would
+ * reject the right password once tripped, locking out the one person who knows it.
+ */
+export function isLocked(ip: string): boolean {
+  const rec = failures.get(ip);
+  if (!rec) return false;
+  if (rec.until < Date.now()) {
+    failures.delete(ip);
+    return false;
   }
-  rec.count += 1;
-  return rec.count <= 8;
+  return rec.count >= MAX_FAILURES;
 }
 
-export function clearThrottle(ip: string) {
-  attempts.delete(ip);
+export function recordFailure(ip: string) {
+  const now = Date.now();
+  const rec = failures.get(ip);
+  if (!rec || rec.until < now) failures.set(ip, { count: 1, until: now + WINDOW_MS });
+  else rec.count += 1;
+}
+
+export function clearFailures(ip: string) {
+  failures.delete(ip);
 }

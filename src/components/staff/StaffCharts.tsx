@@ -1,8 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useLang } from "../LangProvider";
 import type { StaffMetrics } from "@/lib/staff/metrics";
 import type { L10n } from "@/lib/corpus/types";
+
+/** ro: 1 zi / 2 zile. ru: 1 день / 2–4 дня / 5 дней, also for 11–14 and numbers ending in 0 or 5–9. */
+function plural(n: number, lang: "ro" | "ru", forms: { ro: [string, string]; ru: [string, string, string] }): string {
+  if (lang === "ro") return `${n} ${n === 1 ? forms.ro[0] : forms.ro[1]}`;
+  const teen = n % 100 >= 11 && n % 100 <= 14;
+  const last = n % 10;
+  const form = teen || last === 0 || last >= 5 ? forms.ru[2] : last === 1 ? forms.ru[0] : forms.ru[1];
+  return `${n} ${form}`;
+}
+
+const DAYS = { ro: ["zi", "zile"] as [string, string], ru: ["день", "дня", "дней"] as [string, string, string] };
+const CITES = { ro: ["citare", "citări"] as [string, string], ru: ["цитирование", "цитирования", "цитирований"] as [string, string, string] };
 
 export function Bars({ rows, tone = "ok", total }: { rows: { label: L10n | string; count: number }[]; tone?: "ok" | "warn" | "bad" | "flat"; total?: number }) {
   const { lang } = useLang();
@@ -60,11 +73,53 @@ export function Funnel({ steps }: { steps: { label: L10n; value: number; note: L
 
 export function CoverageSection({ m }: { m: StaffMetrics }) {
   const { t } = useLang();
-  const { corpus, coverage, questions } = m;
+  const { corpus, coverage, questions, traffic } = m;
   const unmatchedPct = questions.logged ? Math.round((coverage.unmatched / questions.logged) * 100) : 0;
 
   return (
     <>
+      <section className="bo-panel">
+        <div className="bo-panel-head">
+          <div>
+            <h2>{t({ ro: "Trafic real", ru: "Реальный трафик" })}</h2>
+            <p>{t({ ro: "Fiecare întrebare pusă, reușită sau nu. Fără textul întrebării — doar subiectul, starea și motorul.", ru: "Каждый заданный вопрос, удачный или нет. Без текста вопроса — только тема, статус и движок." })}</p>
+          </div>
+          {traffic.answeredPct != null && <p className="bo-big">{traffic.answeredPct}%</p>}
+        </div>
+        {traffic.total === 0 ? (
+          <div className="bo-note">
+            <span className="bo-note-icon" aria-hidden="true">i</span>
+            <div>
+              <strong>{t({ ro: "Încă nicio întrebare înregistrată", ru: "Пока ни одного записанного вопроса" })}</strong>
+              {t({
+                ro: "Înregistrarea completă tocmai a fost pornită. Până se adună trafic, panourile de mai jos arată doar eșecurile salvate anterior.",
+                ru: "Полная запись только что включена. Пока трафик не накопится, панели ниже показывают только ранее сохранённые неудачи.",
+              })}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="bo-split">
+              <div>
+                <h3 className="bo-sub">{t({ ro: "Stare răspuns", ru: "Статус ответа" })}</h3>
+                <Bars rows={traffic.byStatus} tone="ok" total={traffic.total} />
+              </div>
+              <div>
+                <h3 className="bo-sub">{t({ ro: "Motor", ru: "Движок" })}</h3>
+                <Bars rows={traffic.byEngine} tone="flat" total={traffic.total} />
+              </div>
+            </div>
+            <p className="bo-row-meta" style={{ marginTop: 12 }}>
+              {traffic.total} {t({ ro: "întrebări", ru: "вопросов" })}
+              {traffic.fallbackPct != null && ` · ${traffic.fallbackPct}% ${t({ ro: "au căzut pe rezervă", ru: "ушли на резерв" })}`}
+              {traffic.weakMatches > 0 && ` · ${traffic.weakMatches} ${t({ ro: "potriviri slabe de subiect", ru: "слабых совпадений темы" })}`}
+            </p>
+            <h3 className="bo-sub" style={{ marginTop: 18 }}>{t({ ro: "Ultimele 14 zile", ru: "Последние 14 дней" })}</h3>
+            <DayChart data={traffic.byDay} label={t({ ro: "Întrebări pe zi", ru: "Вопросы по дням" })} />
+          </>
+        )}
+      </section>
+
       <section className="bo-panel">
         <div className="bo-panel-head">
           <div>
@@ -105,8 +160,10 @@ export function CoverageSection({ m }: { m: StaffMetrics }) {
 
         <div className="bo-split">
           <div>
-            <h3 className="bo-sub">{t({ ro: "Întrebări primite", ru: "Полученные вопросы" })}</h3>
-            <Bars rows={coverage.topics.map((x) => ({ label: x.label, count: x.questions }))} tone="warn" />
+            <h3 className="bo-sub">
+              {traffic.total > 0 ? t({ ro: "Întrebări care au ajuns la subiect", ru: "Вопросов, дошедших до темы" }) : t({ ro: "Întrebări eșuate pe subiect", ru: "Неудавшихся вопросов по теме" })}
+            </h3>
+            <Bars rows={coverage.topics.map((x) => ({ label: x.label, count: traffic.total > 0 ? x.asked : x.questions }))} tone="warn" />
           </div>
           <div>
             <h3 className="bo-sub">{t({ ro: "Afirmații care susțin subiectul", ru: "Утверждений в поддержку темы" })}</h3>
@@ -199,9 +256,37 @@ export function TicketAnalytics({ m }: { m: StaffMetrics["tickets"] }) {
 }
 
 export function EvidenceSection({ m }: { m: StaffMetrics }) {
-  const { t } = useLang();
+  const { lang, t } = useLang();
   return (
     <>
+      <section className="bo-panel">
+        <div className="bo-panel-head">
+          <div>
+            <h2>{t({ ro: "Coadă de reverificare", ru: "Очередь на перепроверку" })}</h2>
+            <p>{t({ ro: "Sursele ordonate după cât de des sunt citate înmulțit cu vechimea copiei locale. Un document mult folosit și vechi este cel mai costisitor dacă s-a schimbat între timp.", ru: "Источники отсортированы по частоте цитирования, умноженной на возраст локальной копии. Часто используемый и старый документ обходится дороже всего, если он успел измениться." })}</p>
+          </div>
+        </div>
+        <div className="bo-rows">
+          {m.evidence.recheck.map((d) => (
+            <article key={d.id} className="bo-row">
+              <div className="bo-row-top">
+                <span className={`bo-pill ${d.status === "declared_in_force" ? "resolved" : "new"}`}>
+                  {d.status === "declared_in_force" ? t({ ro: "În vigoare declarat", ru: "Заявлено действующим" }) : t({ ro: "Valabilitate nestabilită", ru: "Действительность не установлена" })}
+                </span>
+                <span>{d.uses > 0 ? plural(d.uses, lang, CITES) : t({ ro: "necitat încă", ru: "ещё не цитировался" })}</span>
+                <span style={{ marginLeft: "auto" }}>{t({ ro: "copie din", ru: "копия от" })} {d.retrievedAt} · {plural(d.ageDays, lang, DAYS)}</span>
+              </div>
+              <p className="bo-row-body">
+                <Link href={`/surse/${d.id}`} style={{ fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2 }}>{d.title}</Link>
+              </p>
+            </article>
+          ))}
+        </div>
+        <p className="bo-row-meta" style={{ marginTop: 12 }}>
+          {m.evidence.unusedPassages}/{m.corpus.passages} {t({ ro: "pasaje nu au fost citate niciodată într-un răspuns.", ru: "фрагментов ни разу не цитировались в ответе." })}
+        </p>
+      </section>
+
       <section className="bo-panel">
         <div className="bo-panel-head">
           <div>

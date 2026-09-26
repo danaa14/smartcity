@@ -8,6 +8,7 @@ import { PASSAGE_BY_ID } from "@/lib/corpus/passages";
 import { DOC_BY_ID, DOCS } from "@/lib/corpus/docs";
 import { staffSession } from "@/lib/staff/auth";
 import { buildMetrics } from "@/lib/staff/metrics";
+import { askEvents } from "@/lib/staff/events";
 import { StaffClient, type ConflictCandidate } from "@/components/staff/StaffClient";
 import { StaffGate } from "@/components/staff/StaffGate";
 import { StaffSignOut } from "@/components/staff/StaffSignOut";
@@ -34,7 +35,7 @@ export default async function StaffPage() {
 
   const lang = await getLang();
   const t = (x: { ro: string; ru: string }) => tr(x, lang);
-  const [items, tks] = await Promise.all([reviews.all(), tickets.all()]);
+  const [items, tks, events] = await Promise.all([reviews.all(), tickets.all(), askEvents.all()]);
   const unknownValidity = DOCS.filter((d) => d.kind === "real" && d.status === "unknown").map((d) => ({ id: d.id, title: d.title, note: d.statusNote }));
 
   return (
@@ -54,7 +55,7 @@ export default async function StaffPage() {
           })}
         </p>
       </header>
-      <StaffClient items={items} tickets={tks} conflicts={corpusConflicts()} unknownValidity={unknownValidity} metrics={buildMetrics(items, tks)} />
+      <StaffClient items={items} tickets={tks} conflicts={corpusConflicts()} unknownValidity={unknownValidity} metrics={buildMetrics(items, tks, events)} />
     </div>
   );
 }

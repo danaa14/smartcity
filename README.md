@@ -42,7 +42,7 @@ npm run build && npm start
 | `/scaneaza` | The same flow as a full page, for a document worth spending time on (side-by-side review, text correction, sample contract). Shares its OCR, redaction and highlighting code with the in-chat version via `src/components/scan/parts.tsx`. Photo/PDF → OCR **in the browser** (tesseract.js, `ron`+`rus` best models) → personal data found **in the browser** (rules for IDNP/IBAN/phone/e-mail/plates/dates + multilingual PII model via transformers.js) and blurred on the page image → user reviews, unticks or adds items and confirms the exact outgoing text → only that redacted text goes to Muse Spark, which returns a verdict, missing elements, risky clauses and suggestions; each finding's quote is checked verbatim against the document before it is highlighted. |
 | `/raporteaza` → `/tichet/[id]` | 3-step report (text/photo/video/voice → location + category + description → review & confirm) → local DEMO ticket, truthful timeline, delete. When a video is attached, a button extracts GPS + audio transcript (local whisper-cpp) and an AI model drafts the location, category and description — the description then becomes optional. |
 | `/suna` | Phone concept demo (RO/RU), same answer engine, voice report with read-back, human escalation when evidence is missing. |
-| `/angajati` | Employee view: unanswered/partial questions, candidate contradictions with both passages, citation reports, ratings, demo tickets, review states, filters. |
+| `/angajati` | Back office, behind a password (`STAFF_PASSWORD`). Overview; **coverage** (source-to-answer funnel, demand vs. corpus, live traffic); unanswered/partial questions; candidate contradictions with both passages; citation reports; ratings; demo tickets with category, aging and classifier-agreement panels; **evidence** with the corpus recheck queue. Review states and filters throughout. |
 | `/despre` | What works / simulated / needs integration, coverage, privacy, **monthly budget calculator**. |
 
 ## Architecture
@@ -57,6 +57,8 @@ src/lib/
   ocr/         adapter.ts (OcrAdapter; local Tesseract CLI) · analyze.ts (observations vs. deductions) · evidence.ts
   tickets/     types.ts · classify.ts (keyword suggestion) · repo.ts (local JSON + uploads) · adapter.ts (MunicipalSubmissionAdapter)
   feedback/    review items (ratings, citation reports, gaps, conflicts) with PII redaction
+  staff/       auth.ts (password gate, HMAC session cookie) · events.ts (one metadata row per answer)
+               metrics.ts (coverage funnel, demand, traffic, ticket panels, recheck queue)
   store/db.ts  serialised JSON collections in .data/
   i18n/        RO/RU strings, cookie-based language
   budget.ts    parameters + formulas
@@ -97,7 +99,8 @@ Not processed: education, health, transport, district praeturas, the local-taxes
 - Tickets are stored locally and never sent; no processing states are simulated. Categories are the prototype's, not official departments.
 - Document assistant: OCR and personal-data detection run in the browser. The PII model (`onnx-community/multilang-pii-ner-ONNX`, ~280 MB int8) is downloaded once from Hugging Face and cached by the browser; no document content is sent in that request. Detection is best-effort: the user must check the blurred preview and the outgoing text before sending, and the server refuses text that still contains e-mails, IDNPs, IBANs or card numbers. The review needs `OPENCODE_API_KEY` and Muse Spark enabled in the OpenCode workspace; the model trains on request data. It is not legal advice. The bundled sample (`public/samples/contract-exemplu.jpg`) is a fictitious contract. The older server-side OCR route (`/api/ocr`, Tesseract CLI, AGSV form rules) is still present.
 - Video transcription is real (local whisper-cpp, `ocr/whisper/ggml-base.bin`); the summary uses the configured AI model (see AI section) or keyword rules when the model is unavailable. Video GPS metadata is shown as coordinates; no reverse geocoding.
-- Employee view has no authentication; nobody at City Hall receives these items.
+- Back office is gated by one shared password (`STAFF_PASSWORD`, min. 8 characters) held in an 8-hour HMAC cookie — there are no individual accounts, roles or audit trail, and with the variable unset the page stays closed to everyone. Nobody at City Hall receives these items.
+- Back-office figures come only from use of this prototype on this machine. Ticket panels describe a handful of demo tickets, so percentages there move wildly with one more record.
 
 ## Integration points
 
@@ -113,6 +116,8 @@ Not processed: education, health, transport, district praeturas, the local-taxes
 ## Privacy
 
 Demo mode sends nothing to external AI, OCR or storage services. Scanned files are processed in a temp directory and deleted immediately. Video transcription runs locally (whisper-cpp); the transcript and GPS coordinates leave the machine only if the configured AI model is enabled and creates the summary. Tickets and media live in `.data/` and can be deleted from the ticket page. Reports ask for no name, phone or e-mail. Questions stored for review have e-mails, phone numbers and IDNPs replaced. Logs contain no document content.
+
+Every answer also writes one row to `.data/ask-events.json` so the back office has a denominator for its failure counts. That row holds **no question text** — only language, topic, retrieval score, answer status, engine, claim count and the ids of cited passages. A failed question additionally keeps its redacted wording as a review item, because a person has to read it to repair the corpus; a successful one only ever needs counting. Widening this to store wording for successes is a one-line change in `src/lib/staff/events.ts`, and would trade the current privacy posture for the ability to see real phrasings.
 
 ## Monthly budget (also interactive at `/despre#buget`)
 

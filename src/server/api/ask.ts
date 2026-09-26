@@ -5,6 +5,7 @@ import { askGeneral, isSmallTalk, proseAnswer, streamGeneral, type DocContext } 
 import { withWebFallback, webSearch, type WebResult } from "@/lib/web/search";
 import { retrieve } from "@/lib/retrieval";
 import { logReview } from "@/lib/feedback";
+import { logAsk } from "@/lib/staff/events";
 import { AI } from "@/lib/ai/config";
 import type { Lang } from "@/lib/corpus/types";
 import type { Answer } from "@/lib/answer/types";
@@ -196,6 +197,17 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
 
 /** Documentation repair loop: gaps and uncovered questions become review items. */
 async function record(answer: Answer, question: string, lang: Lang) {
+  await logAsk({
+    lang,
+    kind: answer.kind,
+    status: answer.status,
+    topicId: answer.topicId,
+    topicScore: answer.engine.retrieval.topicScore,
+    engine: answer.engine.mode,
+    claims: answer.claims.length,
+    cited: answer.sources.map((s) => s.passageId),
+  }).catch(() => {});
+
   if (answer.kind === "corpus" && answer.status === "supported") return;
   await logReview({
     kind: answer.kind === "prose" ? "unanswered" : answer.status === "partial" ? "partial" : answer.status === "contradiction" ? "conflict" : "unanswered",

@@ -14,7 +14,7 @@ async function ctx(mobile = false, lang = "ro") {
   p.on("console", (m) => m.type() === "error" && p.errs.push(m.text()));
   return p;
 }
-const ask = async (p, q) => { await p.goto(`${BASE}/intreaba?q=${encodeURIComponent(q)}`); await p.waitForSelector("#ans-h", { timeout: 15000 }); };
+const ask = async (p, q) => { await p.goto(`${BASE}/intreaba?q=${encodeURIComponent(q)}`); await p.waitForSelector("[id$='-ans-h']", { timeout: 15000 }); };
 
 // 1-4: answer states
 let p = await ctx();
@@ -78,7 +78,7 @@ check("citation report saved", true);
 await p.goto(`${BASE}/intreaba`);
 await p.getByRole("button", { name: "Întreabă", exact: true }).click();
 check("empty question shows alert", (await p.locator("#q-err[role=alert]").count()) === 1);
-check("keyboard: Enter submits question", await (async () => { await p.fill("#q", "Cum depun o petiție la primărie?"); await p.press("#q", "Enter"); await p.waitForSelector("#ans-h"); return true; })());
+check("keyboard: Enter submits question", await (async () => { await p.fill("#q", "Cum depun o petiție la primărie?"); await p.press("#q", "Enter"); await p.waitForSelector("[id$='-ans-h']"); return true; })());
 
 // Mobile: citation opens as dialog, focus returns
 const m = await ctx(true);
@@ -161,16 +161,36 @@ await f.waitForFunction(() => document.querySelector("#rep-text")?.value.length 
 check("report: draft survives failure + reload", (await f.inputValue("#rep-text")).includes("bec stradal"));
 await f.evaluate(() => localStorage.clear());
 
-// Staff sees gaps / conflicts
+// Back office sits behind the password gate
 p = await ctx();
 await p.goto(`${BASE}/angajati`);
-check("staff: gap from unanswered question", (await p.locator("main").innerText()).includes("grădiniță"));
-await p.getByRole("tab", { name: /Contradicții/ }).click();
-check("staff: conflict with both passages", (await p.locator("#panel-conflicts blockquote").count()) === 2);
-await p.getByRole("tab", { name: /Citări semnalate/ }).click();
-check("staff: citation report listed", (await p.locator("#panel-citations article").count()) >= 1);
-await p.getByRole("tab", { name: /Citări semnalate/ }).press("ArrowRight");
-check("staff: tabs keyboard navigable", (await p.getByRole("tab", { name: /Evaluări/ }).getAttribute("aria-selected")) === "true");
+check("staff: closed without a session", (await p.locator(".bo-gate").count()) === 1);
+
+const STAFF_PASSWORD = process.env.STAFF_PASSWORD;
+if (!STAFF_PASSWORD) {
+  console.log("… staff section skipped (set STAFF_PASSWORD to run it)");
+} else {
+  const bad = await p.request.post(`${BASE}/api/staff/auth`, { data: { password: "definitely-not-it" } });
+  check("staff: wrong password rejected", bad.status() === 401);
+  check("staff: review endpoint closed without a session", (await p.request.patch(`${BASE}/api/review`, { data: { id: "x", state: "resolved" } })).status() === 401);
+
+  await p.request.post(`${BASE}/api/staff/auth`, { data: { password: STAFF_PASSWORD } });
+  await p.goto(`${BASE}/angajati`);
+  check("staff: session opens the back office", (await p.locator(".bo-shell").count()) === 1);
+  check("staff: overview counts corpus coverage", (await p.locator(".bo-tiles .bo-tile").count()) >= 5);
+
+  await p.getByRole("button", { name: /Lacune/ }).first().click();
+  check("staff: gap from unanswered question", (await p.locator(".bo-rows").innerText()).includes("grădiniță"));
+
+  await p.getByRole("button", { name: /Contradicții/ }).first().click();
+  check("staff: conflict with both passages", (await p.locator("blockquote.bo-quote").count()) === 2);
+
+  await p.getByRole("button", { name: /Acoperire/ }).first().click();
+  check("staff: coverage funnel rendered", (await p.locator(".bo-funnel li").count()) === 4);
+
+  await p.getByRole("button", { name: /Dovezi/ }).first().click();
+  check("staff: recheck queue rendered", (await p.locator(".bo-rows .bo-row").count()) >= 1);
+}
 
 // Keyboard: skip link + focus visible
 p = await ctx();
