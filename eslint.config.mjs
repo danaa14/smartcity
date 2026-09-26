@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendor JS (OCR runtime downloaded into public/).
+    "public/ocr/**",
   ]),
 ]);
 

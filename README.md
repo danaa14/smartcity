@@ -9,7 +9,7 @@ A working prototype of a municipal assistant for Chișinău that answers only fr
 
 ## Run it
 
-Requirements: Node ≥ 20, npm. For OCR: `tesseract` and `poppler` (`pdftoppm`, `pdftotext`) on the machine (`brew install tesseract poppler`).
+Requirements: Node ≥ 20, npm. For OCR: `tesseract` and `poppler` (`pdftoppm`, `pdftotext`) on the machine (`brew install tesseract poppler`). For video analysis: `ffmpeg` and `whisper-cpp` (`brew install ffmpeg whisper-cpp`) plus `npm run whisper:models`.
 
 ```bash
 npm install
@@ -23,6 +23,9 @@ Checks:
 npm run verify:corpus   # every real passage must occur verbatim in its fetched snapshot (corpus/raw)
 npm run test:answers    # 10 scenarios → expected answer state
 npm run test:e2e        # 48 headless-browser checks (needs dev server + `npx playwright install chromium`)
+npm run test:docchat    # in-chat document flow: attach → local OCR → redaction gate → verdict → follow-up context
+                        # STUB=1 mocks the review response, to check the verdict UI without the model
+
 npx tsc --noEmit && npm run lint
 npm run build && npm start
 ```
@@ -34,10 +37,10 @@ npm run build && npm start
 | Route | What it does |
 |---|---|
 | `/` | Question box first, example questions, entry points to Report / Scan / Call. |
-| `/intreaba` | Ask: status badge, claims with `[n]` citation markers, source panel with highlighted passage, "radiography" toggle, step-by-step route, missing/contradiction views, contacts + official service page, rating, citation report. |
+| `/intreaba` | Ask: status badge, claims with `[n]` citation markers, source panel with highlighted passage, "radiography" toggle, step-by-step route, missing/contradiction views, contacts + official service page, rating, citation report. **Documents are handled in the same conversation**: attach a photo/PDF from the composer (or drop it on the page) and the OCR, the personal-data review and the verdict all render as chat turns without leaving the page. Whatever is typed when the file is attached becomes the review goal. Afterwards the redacted text travels with follow-up questions, so "ce înseamnă clauza despre penalități?" is answered about that document. |
 | `/surse`, `/surse/[id]` | Corpus documents, passage search, Annex 1 inventory, per-document metadata, relations, tariff version timeline. CSV: `/api/inventory`. |
-| `/scaneaza` | Upload image/PDF → local Tesseract OCR → preview with highlights, observations vs. deductions with citations, editable OCR text, "needs review". |
-| `/raporteaza` → `/raporteaza/creeaza` → `/tichet/[id]` | Create a ticket with a photo, city, location (including JPG GPS metadata when available), and a short title; browse active and resolved tickets by city. Demo tickets stay local to the device. |
+| `/scaneaza` | The same flow as a full page, for a document worth spending time on (side-by-side review, text correction, sample contract). Shares its OCR, redaction and highlighting code with the in-chat version via `src/components/scan/parts.tsx`. Photo/PDF → OCR **in the browser** (tesseract.js, `ron`+`rus` best models) → personal data found **in the browser** (rules for IDNP/IBAN/phone/e-mail/plates/dates + multilingual PII model via transformers.js) and blurred on the page image → user reviews, unticks or adds items and confirms the exact outgoing text → only that redacted text goes to Muse Spark, which returns a verdict, missing elements, risky clauses and suggestions; each finding's quote is checked verbatim against the document before it is highlighted. |
+| `/raporteaza` → `/tichet/[id]` | 3-step report (text/photo/video/voice → location + category + description → review & confirm) → local DEMO ticket, truthful timeline, delete. When a video is attached, a button extracts GPS + audio transcript (local whisper-cpp) and an AI model drafts the location, category and description — the description then becomes optional. |
 | `/suna` | Phone concept demo (RO/RU), same answer engine, voice report with read-back, human escalation when evidence is missing. |
 | `/angajati` | Employee view: unanswered/partial questions, candidate contradictions with both passages, citation reports, ratings, demo tickets, review states, filters. |
 | `/despre` | What works / simulated / needs integration, coverage, privacy, **monthly budget calculator**. |
@@ -92,7 +95,8 @@ Not processed: education, health, transport, district praeturas, the local-taxes
 - Passage translations are unofficial prototype translations; originals are always shown.
 - Phone page: caller lines are scripted; no phone number, ASR, call transfer or SMS. Optional browser speech synthesis only.
 - Tickets are stored locally and never sent; no processing states are simulated. Categories are the prototype's, not official departments.
-- OCR is real (local Tesseract) for any upload; blank-field rules and cited suggestions exist only for the AGSV form. The bundled sample is the real form filled with fictitious data.
+- Document assistant: OCR and personal-data detection run in the browser. The PII model (`onnx-community/multilang-pii-ner-ONNX`, ~280 MB int8) is downloaded once from Hugging Face and cached by the browser; no document content is sent in that request. Detection is best-effort: the user must check the blurred preview and the outgoing text before sending, and the server refuses text that still contains e-mails, IDNPs, IBANs or card numbers. The review needs `OPENCODE_API_KEY` and Muse Spark enabled in the OpenCode workspace; the model trains on request data. It is not legal advice. The bundled sample (`public/samples/contract-exemplu.jpg`) is a fictitious contract. The older server-side OCR route (`/api/ocr`, Tesseract CLI, AGSV form rules) is still present.
+- Video transcription is real (local whisper-cpp, `ocr/whisper/ggml-base.bin`); the summary uses the configured AI model (see AI section) or keyword rules when the model is unavailable. Video GPS metadata is shown as coordinates; no reverse geocoding.
 - Employee view has no authentication; nobody at City Hall receives these items.
 
 ## Integration points
@@ -108,7 +112,7 @@ Not processed: education, health, transport, district praeturas, the local-taxes
 
 ## Privacy
 
-Demo mode sends nothing to external AI, OCR or storage services. Scanned files are processed in a temp directory and deleted immediately. Tickets and media live in `.data/` and can be deleted from the ticket page. Reports ask for no name, phone or e-mail. Questions stored for review have e-mails, phone numbers and IDNPs replaced. Logs contain no document content.
+Demo mode sends nothing to external AI, OCR or storage services. Scanned files are processed in a temp directory and deleted immediately. Video transcription runs locally (whisper-cpp); the transcript and GPS coordinates leave the machine only if the configured AI model is enabled and creates the summary. Tickets and media live in `.data/` and can be deleted from the ticket page. Reports ask for no name, phone or e-mail. Questions stored for review have e-mails, phone numbers and IDNPs replaced. Logs contain no document content.
 
 ## Monthly budget (also interactive at `/despre#buget`)
 

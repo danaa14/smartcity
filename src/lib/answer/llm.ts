@@ -18,6 +18,7 @@ const SYSTEM = `You answer questions from residents of Chișinău using ONLY the
 Rules:
 - Every claim must be supported by an EXACT, verbatim, contiguous quote copied character-for-character from one of the passages (keep diacritics and punctuation). Never paraphrase inside "quote".
 - Never state a fee, deadline, document, right or obligation that is not in the passages. If the passages do not answer part of the question, list that part under "missing".
+- If the passages are about a DIFFERENT subject than the question, return {"claims":[],"missing":[...]}. A related-sounding passage is not an answer; never pad the reply with facts the user did not ask about.
 - Do not decide which of two conflicting sources prevails.
 - Write each claim in both Romanian ("ro") and Russian ("ru"); short, plain language, max 2 sentences.
 - Passages marked DEMO are fictional; if you use them, start both claim texts with "[DEMO] ".
@@ -43,10 +44,12 @@ function parseJson(text: string): unknown {
 }
 
 /** Asks the model to draft claims over candidate passages. Output is untrusted until validated. */
-export async function draftWithModel(question: string, candidateIds: string[]): Promise<LlmDraft> {
-  const ids = candidateIds.filter((id) => PASSAGE_BY_ID.has(id)).slice(0, 14);
+export async function draftWithModel(question: string, candidateIds: string[], signal?: AbortSignal): Promise<LlmDraft> {
+  const ids = candidateIds.filter((id) => PASSAGE_BY_ID.has(id)).slice(0, 8);
   const session = "pefir-" + createHash("sha256").update(question).digest("hex").slice(0, 16);
-  const raw = await complete(SYSTEM, `Question: ${question}\n\nPassages:\n${formatPassages(ids)}`, session);
+  // Reasoning tokens are drawn from this budget before the JSON is written; 2500 left the
+  // model cutting off mid-object on multi-claim answers.
+  const raw = await complete(SYSTEM, `Question: ${question}\n\nPassages:\n${formatPassages(ids)}`, session, { maxTokens: 8000, signal });
   let data: { claims?: unknown[]; missing?: unknown[] };
   try {
     data = parseJson(raw) as typeof data;
@@ -77,8 +80,8 @@ export async function draftWithModel(question: string, candidateIds: string[]): 
 }
 
 export const MODEL_LABEL = (): L10n => ({
-  ro: `Răspuns redactat de modelul ${AI.model} (OpenCode Go) din pasajele corpusului. Fiecare afirmație a fost verificată automat: citatul trebuie să apară exact în pasaj, altfel afirmația este eliminată.`,
-  ru: `Ответ составлен моделью ${AI.model} (OpenCode Go) по фрагментам корпуса. Каждое утверждение проверено автоматически: цитата должна точно совпадать с фрагментом, иначе утверждение удаляется.`,
+  ro: `Răspuns redactat de modelul ${AI.model} din pasajele corpusului. Fiecare afirmație a fost verificată automat: citatul trebuie să apară exact în pasaj, altfel afirmația este eliminată.`,
+  ru: `Ответ составлен моделью ${AI.model} по фрагментам корпуса. Каждое утверждение проверено автоматически: цитата должна точно совпадать с фрагментом, иначе утверждение удаляется.`,
 });
 
 export function fallbackLabel(code: string): L10n {

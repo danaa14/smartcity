@@ -47,6 +47,7 @@ export function answerQuestion(question: string, uiLang?: Lang): Answer {
   const base = {
     question: q,
     questionLang,
+    kind: "corpus" as const,
     requestedAspects: aspects,
     generatedAt: new Date().toISOString(),
     engine: {

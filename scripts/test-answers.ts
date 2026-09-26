@@ -11,6 +11,7 @@ const cases: [string, string][] = [
   ["В какой срок мэрия отвечает на петицию?", "partial"],
   ["Vreau să tai un copac din curtea blocului", "supported"],
   ["Cât costă evacuarea gunoiului la casă?", "supported"],
+  ["cine e primar", "missing"],
 ];
 let bad = 0;
 for (const [q, want] of cases) {

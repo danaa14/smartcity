@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { getLang } from "@/lib/i18n/server";
 import { LangProvider } from "@/components/LangProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PageShell } from "@/components/PageShell";
@@ -14,7 +13,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff", interactiveWidget: "resizes-content" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const lang = await getLang();
+  // Static-first: the language cookie is adopted client-side in LangProvider
+  // (keeps pages prerenderable; see Vercel function budget).
+  const lang = "ro" as const;
   return (
     <html lang={lang} className="h-full antialiased">
       <body className="flex min-h-full flex-col">

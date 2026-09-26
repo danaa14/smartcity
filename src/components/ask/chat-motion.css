@@ -1,0 +1,99 @@
+/* Chat motion. Everything here is disabled by the global prefers-reduced-motion rule. */
+
+@keyframes pf-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pf-pop {
+  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+  70% { opacity: 1; transform: translateY(-1px) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes pf-shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pf-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pf-check {
+  from { stroke-dashoffset: 16; }
+  to { stroke-dashoffset: 0; }
+}
+
+.pf-user-in { animation: pf-pop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; transform-origin: bottom right; }
+.pf-bot-in { animation: pf-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Staggered "streaming" reveal of the answer blocks without touching their markup. */
+.pf-stream > div > article > *,
+.pf-stream > div > aside {
+  animation: pf-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.pf-stream > div > article > *:nth-child(1) { animation-delay: 0.05s; }
+.pf-stream > div > article > *:nth-child(2) { animation-delay: 0.18s; }
+.pf-stream > div > article > *:nth-child(3) { animation-delay: 0.3s; }
+.pf-stream > div > article > *:nth-child(4) { animation-delay: 0.42s; }
+.pf-stream > div > article > *:nth-child(5) { animation-delay: 0.52s; }
+.pf-stream > div > article > *:nth-child(6) { animation-delay: 0.6s; }
+.pf-stream > div > article > *:nth-child(n + 7) { animation-delay: 0.68s; }
+.pf-stream > div > aside { animation-delay: 0.25s; }
+.pf-stream > div > article li { animation: pf-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pf-stream > div > article li:nth-child(2) { animation-delay: 0.08s; }
+.pf-stream > div > article li:nth-child(3) { animation-delay: 0.16s; }
+.pf-stream > div > article li:nth-child(4) { animation-delay: 0.24s; }
+.pf-stream > div > article li:nth-child(n + 5) { animation-delay: 0.32s; }
+
+.pf-shimmer-text {
+  background: linear-gradient(90deg, #4a5568 0%, #4a5568 40%, #9aa6ba 50%, #4a5568 60%, #4a5568 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pf-shimmer 1.8s linear infinite;
+}
+.pf-skeleton {
+  background: linear-gradient(90deg, #eef0f4 0%, #f7f8fa 50%, #eef0f4 100%);
+  background-size: 200% 100%;
+  animation: pf-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+.pf-spin { animation: pf-spin 0.8s linear infinite; }
+.pf-check path { stroke-dasharray: 16; animation: pf-check 0.35s ease-out both; }
+
+.pf-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.pf-collapse[data-open="true"] { grid-template-rows: 1fr; }
+.pf-collapse > div { overflow: hidden; }
+
+.pf-fab { transition: opacity 0.2s ease, transform 0.2s ease; }
+.pf-fab[data-show="false"] { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+.pf-composer { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+.pf-composer:focus-within { border-color: #1f4e9c; box-shadow: 0 0 0 4px rgb(31 78 156 / 0.12), 0 8px 24px rgb(20 33 61 / 0.08); }
+
+.pf-send { transition: transform 0.15s ease, background-color 0.15s ease, opacity 0.15s ease; }
+.pf-send:not(:disabled):hover { transform: translateY(-1px); }
+.pf-send:not(:disabled):active { transform: scale(0.94); }
+.pf-chip { transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease; }
+.pf-chip:hover { transform: translateY(-1px); }
+
+/* AnswerBrief fold panels: smooth grid-rows reveal + chevron. */
+.pf-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pf-fold-wrap[open] .pf-fold { grid-template-rows: 1fr; }
+.pf-fold > * { overflow: hidden; }
+.pf-chev { display: inline-block; transition: transform 0.25s ease; }
+.pf-fold-wrap[open] .pf-chev { transform: rotate(90deg); }
+
+/* Stagger the brief's build-out in the chat thread. */
+.pf-stream > div > .pf-brief > * { animation: pf-rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pf-stream > div > .pf-brief > *:nth-child(2) { animation-delay: 0.08s; }
+.pf-stream > div > .pf-brief > *:nth-child(3) { animation-delay: 0.16s; }
+.pf-stream > div > .pf-brief > *:nth-child(n + 4) { animation-delay: 0.24s; }
+
+/* Streaming chat bubble: typing dots + text cursor. */
+@keyframes pf-blink { 50% { opacity: 0; } }
+.pf-dot { width: 6px; height: 6px; border-radius: 9999px; background: rgb(74 85 104 / 0.7); animation: pf-blink 0.9s ease-in-out infinite; }
+.pf-cursor { color: #1f4e9c; animation: pf-blink 0.8s steps(2) infinite; margin-left: 1px; }
