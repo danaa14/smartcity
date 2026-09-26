@@ -346,7 +346,13 @@ button:not(:disabled), summary { cursor: pointer; }
 .voice-call-source-group details { border: 1px solid #e7ebdf; border-radius: 11px; padding: 9px 11px; }
 .voice-call-source-group summary { overflow-wrap: anywhere; color: #536247; font-size: 11px; font-weight: 650; }
 .voice-call-source-group details p { margin-top: 8px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
-.voice-call-actions { display: flex; justify-content: center; }
+.voice-call-source-group a { display: inline-block; margin-top: 8px; color: #536b40; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.voice-call-correction { display: grid; gap: 8px; }
+.voice-call-correction label { font-size: 12px; font-weight: 650; }
+.voice-call-correction textarea { width: 100%; resize: vertical; border: 1px solid #dfe5d7; border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 13px; line-height: 1.5; }
+.voice-call-correction button, .voice-call-actions button:not(.voice-call-start):not(.voice-call-end) { min-height: 42px; border: 1px solid #dfe5d7; border-radius: 12px; padding: 9px 14px; font-size: 13px; font-weight: 650; }
+.voice-call-correction p { color: #70786c; font-size: 11px; }
+.voice-call-actions { display: flex; justify-content: center; gap: 10px; }
 .voice-call-start, .voice-call-end { width: 100%; min-height: 48px; border-radius: 15px; padding: 12px 18px; font-size: 14px; font-weight: 650; }
 .voice-call-start { background: #252923; color: #fff; }
 .voice-call-start:hover { background: #3b4037; }

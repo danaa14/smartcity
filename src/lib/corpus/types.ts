@@ -40,6 +40,8 @@ export interface SourceDoc {
   effectiveAt?: string;
   revisedAt?: string;
   retrievedAt: string;
+  /** Timestamp of the most recent successful source-page check (falls back to retrievedAt). */
+  lastCheckedAt?: string;
   status: DocStatus;
   statusNote: L10n;
   relations?: DocRelation[];

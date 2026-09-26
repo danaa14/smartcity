@@ -44,7 +44,7 @@ export function answerWithModel(question: string, lang: Lang, signal?: AbortSign
 
 async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): Promise<Answer | null> {
   const found = retrieve(question);
-  const base = answerQuestion(question, lang);
+  const base = answerQuestion(question, lang, { includeDemo: false });
 
   // A conflict between sources is the one thing the model must never adjudicate.
   if (base.status === "contradiction") return base;
@@ -93,10 +93,9 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
         ro: `${report.dropped.length} afirmație(i) propuse de model au fost eliminate: citatul nu apărea exact în sursă.`,
         ru: `${report.dropped.length} утверждение(й), предложенных моделью, удалено: цитата не совпадала с источником.`,
       });
-    // Partial only when an ASKED aspect is uncovered (pipeline gaps are aspect-grounded).
-    // Extras the model volunteers (e.g. penalties nobody asked about) stay in `missing` as
-    // advisory but must not downgrade a complete answer.
-    const status = start.missing.length ? "partial" : "supported";
+    // A model-reported missing part or a dropped unverifiable claim must never be returned
+    // as fully supported, even if the deterministic aspect detector missed that sub-question.
+    const status = !valid.length ? "missing" : missing.length ? "partial" : "supported";
     const subject = start.topicTitle ? ` Subiect: ${start.topicTitle.ro}.` : "";
     const subjectRu = start.topicTitle ? ` Тема: ${start.topicTitle.ru}.` : "";
 

@@ -1,6 +1,6 @@
 import { FACTS } from "../corpus/facts";
 import { PASSAGES } from "../corpus/passages";
-import { DOC_BY_ID } from "../corpus/docs";
+import { DOCS, DOC_BY_ID } from "../corpus/docs";
 import { TOPICS, OUT_OF_CORPUS_HINTS } from "../corpus/topics";
 import type { Aspect, Passage, Topic } from "../corpus/types";
 import { normalize, tokens } from "../text";
@@ -251,9 +251,10 @@ const COVERAGE_ALONE = 0.5;
 const MIN_TOKENS_FOR_COVERAGE = 3;
 
 export function retrieve(question: string, aspects = detectAspects(question)): Retrieval {
-  const ranked = rankTopics(question, aspects);
+  const ranked = rankTopics(question, aspects).filter((hit) => hit.topic.kind !== "demo");
   const top = ranked[0] && ranked[0].score >= TOPIC_WEAK ? ranked[0] : null;
-  const passages = searchPassages(question, 8);
+  const officialIds = DOCS.filter((doc) => doc.kind === "real" && doc.url && doc.id !== "voice-annex-source-list").map((doc) => doc.id);
+  const passages = searchPassages(question, 8, officialIds);
   const coverage = passages[0]?.coverage ?? 0;
   const score = top?.score ?? 0;
   const enoughWords = new Set(contentTokens(question)).size >= MIN_TOKENS_FOR_COVERAGE;
@@ -263,7 +264,7 @@ export function retrieve(question: string, aspects = detectAspects(question)): R
     topicScore: score,
     candidates: ranked.slice(0, 3).map((h) => ({ topicId: h.topic.id, score: h.score })),
     passages,
-    grounded: score >= TOPIC_WEAK || (enoughWords && coverage >= COVERAGE_ALONE),
+    grounded: (top?.specific ?? 0) >= SPECIFIC_CONFIDENT || (enoughWords && coverage >= COVERAGE_ALONE),
     confident: (top?.specific ?? 0) >= SPECIFIC_CONFIDENT,
   };
 }

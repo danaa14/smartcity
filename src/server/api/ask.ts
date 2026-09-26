@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { answerWithModel } from "@/lib/answer/withModel";
 import { answerQuestion } from "@/lib/answer/pipeline";
 import { askGeneral, isSmallTalk, proseAnswer, streamGeneral, type DocContext } from "@/lib/answer/general";
-import { withWebFallback, webSearch, type WebResult } from "@/lib/web/search";
+import { withWebFallback, type WebResult } from "@/lib/web/search";
 import { retrieve } from "@/lib/retrieval";
 import { logReview } from "@/lib/feedback";
 import { AI } from "@/lib/ai/config";
@@ -101,8 +101,11 @@ async function resolve(req: Request, question: string, lang: Lang, history: stri
     const corpus = await answerWithModel(question, lang, req.signal);
     if (corpus) return withWebFallback(corpus, question);
   }
-  if (!AI.enabled) return answerQuestion(question, lang);
-  const web = isSmallTalk(question) || doc ? Promise.resolve<WebResult[]>([]) : webSearch(question, 3);
+  // Keep open-domain prose for small talk and questions about an uploaded personal document.
+  // Municipal questions without matching official evidence must not fall through to model memory/web.
+  if (!isSmallTalk(question) && !doc) return answerQuestion(question, lang, { includeDemo: false });
+  if (!AI.enabled) return answerQuestion(question, lang, { includeDemo: false });
+  const web = Promise.resolve<WebResult[]>([]);
   const text = await askGeneral(question, lang, history, req.signal, doc);
   return proseAnswer(question, lang, text, await web);
 }
@@ -153,13 +156,17 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
           }
         }
 
+        if (!isSmallTalk(question) && !doc) {
+          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false }) });
+          return close();
+        }
         if (!AI.enabled) {
-          send({ type: "answer", answer: answerQuestion(question, lang) });
+          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false }) });
           return close();
         }
 
         // Fetch official links alongside the stream so they cost no extra wait.
-        const web = isSmallTalk(question) || doc ? Promise.resolve<WebResult[]>([]) : webSearch(question, 3);
+        const web = Promise.resolve<WebResult[]>([]);
         send({ type: "phase", label: doc ? phases.document : phases.think });
 
         let text = "";
