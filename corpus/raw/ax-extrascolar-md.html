@@ -1,0 +1,857 @@
+<!DOCTYPE html><html lang="ro"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="LMkMFnzFv4Fe9Cln7PhclBpf1i3TTUf9sMTvr7lJ">
+    <link rel="icon" href="https://extrascolar.md/assets/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/owl.carousel.min.css">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/owl.theme.default.min.css">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/app.css?v=1.0.2">
+    <link rel="stylesheet" href="https://extrascolar.md/assets/css/responsive.css">
+            <title>Catalog Online - Activități Extrașcolare</title>
+        <meta name="description" content="Caută activități extrașcolare - Dans, Tenis, Vioară, Pian, Desen, Sah, Pictură, Limbi străine, Educație financiară etc.">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Catalog Online - Activități Extrașcolare">
+        <meta property="og:description" content="Caută activități extrașcolare - Dans, Tenis, Vioară, Pian, Desen, Sah, Pictură, Limbi străine, Educație financiară etc.">
+        <meta property="og:site_name" content="Extrașcolar">
+        <meta property="og:image" content="/assets/images/share.png">
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    
+    
+<link rel="stylesheet" type="text/css" href="https://www.chisinau.md/css/jquery-ui.css"><link rel="stylesheet" type="text/css" href="https://www.chisinau.md/plugins/jquery-slick_modal/css/slickmodal.min.css"></head>
+<body class="myBodyClass">
+
+
+<!-- Modal -->
+<div class="modal fade" id="mobileNavModal" tabindex="-1" aria-labelledby="mobileNavModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mobileNavModal">Navigare</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mnav-links">
+                    <a href="/">Acasă <i class="bi bi-chevron-right"></i></a>
+                    <a href="/categories">Categorii <i class="bi bi-chevron-right"></i></a>
+                    <a href="/activities">Toate Activitățile <i class="bi bi-chevron-right"></i></a>
+                    <a href="/news">Noutăți și Evenimente <i class="bi bi-chevron-right"></i></a>
+                    <a href="/contacts">Contacte <i class="bi bi-chevron-right"></i></a>
+                </div>
+
+                <div class="navigation-lang">
+                    <a href="#" class="active-lang"><div>RO</div></a>
+                    <a href="/ru"><div>RU</div></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<section class="mobile-navigation">
+    <div class="logo">
+        <a href="/">
+            <img src="/assets/images/logo.png">
+        </a>
+    </div>
+    <div class="menu">
+        <img src="/assets/images/icons/menu.png" data-bs-toggle="modal" data-bs-target="#mobileNavModal">
+    </div>
+</section>
+<section class="topbar">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="logo">
+                    <a href="/">
+                        <img src="/assets/images/logo.png" class="logo_extra">
+                    </a>
+                </div>
+                <div class="parent-logo">
+                    <img src="/assets/images/dgets.png" class="footer_logo_ch mx-2">
+                    <img src="/assets/images/logo_chisinau.png" class="footer_logo_ch">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="navigation">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="navigation-links">
+                    <a href="/">Acasă</a>
+                    <a href="/categories">Categorii</a>
+                    <a href="/activities">Toate Activitățile</a>
+                    <a href="/news">Noutăți și Evenimente</a>
+                    <a href="/contacts">Contacte</a>
+                </div>
+                <div class="navigation-action">
+                    <div class="navigation-lang">
+                        <a href="#" class="active-lang"><div>RO</div></a>
+                        <a href="#"><div>RU</div></a>
+                    </div>
+                                            <a href="/login" class="navigation-auth">
+                            <div class="navigation-auth-icon"><i class="bi bi-person-plus"></i></div>
+                            <div>Logare</div>
+                        </a>
+                                                        </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+
+
+<section class="home-main">
+    <div class="container">
+        <div class="row hm-row">
+            <div class="col-md-7">
+                <form id="searchForm" action="/activities" method="GET">
+                    <div id="keywordBlock"></div>
+                    <h1 class="hm-title">CAUTĂ ACTIVITĂȚI EXTRAȘCOLARE</h1>
+                    <h5 class="hm-subtitle">
+                        DANS, TENIS, VIOARĂ, PIAN, DESEN, ȘAH, PICTURĂ, LIMBA ENGLEZĂ, EDUCAȚIE FINANCIARĂ etc.
+                    </h5>
+                    <div class="row hm-search">
+                        <div class="col-md-12">
+                            <input type="text" class="form-control search-input" id="keywordReplace" placeholder="Caută.." minlength="3">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="search-select dropdown">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="ageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Vârsta
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="ageDropdown">
+                                                                                                                        <li class="dropdown-select" data-input="age" data-value="5 ani">5 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="6 ani">6 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="7 ani">7 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="8 ani">8 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="9 ani">9 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="10 ani">10 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="11 ani">11 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="12 ani">12 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="13 ani">13 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="14 ani">14 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="15 ani">15 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="16 ani">16 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="17 ani">17 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="18 ani">18 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="19 ani">19 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="20 ani">20 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="21 ani">21 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="22 ani">22 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="23 ani">23 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="24 ani">24 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="25 ani">25 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="26 ani">26 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="27 ani">27 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="28 ani">28 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="29 ani">29 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="30 ani">30 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="31 ani">31 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="32 ani">32 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="33 ani">33 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="34 ani">34 ani</li>
+                                                                                    <li class="dropdown-select" data-input="age" data-value="35 ani">35 ani</li>
+                                                                                                            </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="search-select dropdown">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="subjectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Tema
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="subjectDropdown">
+                                                                                                                        <li class="dropdown-select" data-input="subject" data-value="Lectură">Lectură</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Muzică">Muzică</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Dezvoltare personală">Dezvoltare personală</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Dans">Dans</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Artă plastică">Artă plastică</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Explorare">Explorare</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Sport">Sport</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Confecționarea textilelor">Confecționarea textilelor</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Limbi străine">Limbi străine</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Arte decorative">Arte decorative</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Machetare">Machetare</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Arta teatrală">Arta teatrală</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Modelare tehnică">Modelare tehnică</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Educație financiară">Educație financiară</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Artă culinară">Artă culinară</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Artizanat">Artizanat</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Origami">Origami</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Troleibuzul Turistic">Troleibuzul Turistic</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Excursii">Excursii</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Șah și dame">Șah și dame</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Scriere creativă">Scriere creativă</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Aplicații web">Aplicații web</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Ecologie">Ecologie</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Bodybuilding">Bodybuilding</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Atletica grea">Atletica grea</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Jocuri de societate">Jocuri de societate</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Aeromodelare">Aeromodelare</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Creație tehnică">Creație tehnică</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Design poligrafic">Design poligrafic</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Pictură">Pictură</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Înot">Înot</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Ceramică">Ceramică</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Folclor">Folclor</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Fotbal">Fotbal</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Volei">Volei</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Teqball">Teqball</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Tenis">Tenis</li>
+                                                                                    <li class="dropdown-select" data-input="subject" data-value="Lupte libere">Lupte libere</li>
+                                                                                                            </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="search-select dropdown">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="locationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Locația
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="locationDropdown">
+                                                                                                                        <li class="dropdown-select" data-input="location" data-value="Centru">Centru</li>
+                                                                                    <li class="dropdown-select" data-input="location" data-value="Rîșcani">Rîșcani</li>
+                                                                                    <li class="dropdown-select" data-input="location" data-value="Buiucani">Buiucani</li>
+                                                                                    <li class="dropdown-select" data-input="location" data-value="Botanica">Botanica</li>
+                                                                                    <li class="dropdown-select" data-input="location" data-value="Ciocana">Ciocana</li>
+                                                                                    <li class="dropdown-select" data-input="location" data-value="Ghidighici">Ghidighici</li>
+                                                                                                            </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="search-select dropdown">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="priceDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Opțiune preț
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="priceDropdown">
+                                                                                                                        <li class="dropdown-select" data-input="price" data-value="Gratuit">Gratuit</li>
+                                                                                    <li class="dropdown-select" data-input="price" data-value="Contra cost">Contra cost</li>
+                                                                                                            </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="search-select dropdown">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="presenceDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Modalitate de desfășurare
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="presenceDropdown">
+                                                                                                                        <li class="dropdown-select" data-input="presence" data-value="Online">Online</li>
+                                                                                    <li class="dropdown-select" data-input="presence" data-value="Cu prezența fizică">Cu prezența fizică</li>
+                                                                                                            </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit" class="btn btn-primary w-100 btn-lg submit-search" style="height: 55px"><i class="bi bi-search"></i> Caută</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-5">
+                <div class="row hm-images">
+                    <div class="col-md-5">
+                        <img src="/assets/images/hm-dance.jpg">
+                    </div>
+                    <div class="col-md-7">
+                        <img src="/assets/images/hm-robotica.png">
+                    </div>
+                    <div class="col-md-12">
+                        <img src="/assets/images/hm-music.png">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="home-categories">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="section-title">CATEGORII</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="owl-carousel owl-categories categories-items owl-loaded owl-drag">
+                                                                        
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                    
+                                                            <div class="owl-stage-outer"><div class="owl-stage" style="transform: translate3d(0px, 0px, 0px); transition: all; width: 14516px;"><div class="owl-item active" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208022988.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Lectură</h4>
+                                                                        <h6>57 activități</h6>
+                                    <a href="/activities?subject=Lectură" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item active" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/2805220810197.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Muzică</h4>
+                                                                        <h6>55 activități</h6>
+                                    <a href="/activities?subject=Muzică" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item active" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208121441.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Dezvoltare personală</h4>
+                                                                        <h6>90 activități</h6>
+                                    <a href="/activities?subject=Dezvoltare personală" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208152457.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Dans</h4>
+                                                                        <h6>41 activități</h6>
+                                    <a href="/activities?subject=Dans" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208235597.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Artă plastică</h4>
+                                                                        <h6>83 activități</h6>
+                                    <a href="/activities?subject=Artă plastică" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208265566.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Explorare</h4>
+                                                                        <h6>43 activități</h6>
+                                    <a href="/activities?subject=Explorare" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208283620.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Sport</h4>
+                                                                        <h6>66 activități</h6>
+                                    <a href="/activities?subject=Sport" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208303876.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Confecționarea textilelor</h4>
+                                                                        <h6>14 activități</h6>
+                                    <a href="/activities?subject=Confecționarea textilelor" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/2805220832017.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Limbi străine</h4>
+                                                                        <h6>15 activități</h6>
+                                    <a href="/activities?subject=Limbi străine" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208335236.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Arte decorative</h4>
+                                                                        <h6>82 activități</h6>
+                                    <a href="/activities?subject=Arte decorative" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208370479.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Machetare</h4>
+                                                                        <h6>14 activități</h6>
+                                    <a href="/activities?subject=Machetare" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208385044.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Arta teatrală</h4>
+                                                                        <h6>22 activități</h6>
+                                    <a href="/activities?subject=Arta teatrală" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208430967.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Modelare tehnică</h4>
+                                                                        <h6>27 activități</h6>
+                                    <a href="/activities?subject=Modelare tehnică" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/28052208453081.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Educație financiară</h4>
+                                                                        <h6>10 activități</h6>
+                                    <a href="/activities?subject=Educație financiară" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/30052211181036.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Artă culinară</h4>
+                                                                        <h6>6 activități</h6>
+                                    <a href="/activities?subject=Artă culinară" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/3105221429286.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Artizanat</h4>
+                                                                        <h6>2 activități</h6>
+                                    <a href="/activities?subject=Artizanat" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/31052214522214.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Origami</h4>
+                                                                        <h6>22 activități</h6>
+                                    <a href="/activities?subject=Origami" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/01062205535830.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Troleibuzul Turistic</h4>
+                                                                        <h6>2 activități</h6>
+                                    <a href="/activities?subject=Troleibuzul Turistic" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/01062206042131.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Excursii</h4>
+                                                                        <h6>32 activități</h6>
+                                    <a href="/activities?subject=Excursii" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/01062206050997.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Șah și dame</h4>
+                                                                        <h6>9 activități</h6>
+                                    <a href="/activities?subject=Șah și dame" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/02062206272976.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Scriere creativă</h4>
+                                                                        <h6>5 activități</h6>
+                                    <a href="/activities?subject=Scriere creativă" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/02062206304921.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Aplicații web</h4>
+                                                                        <h6>10 activități</h6>
+                                    <a href="/activities?subject=Aplicații web" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/07062214563440.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Ecologie</h4>
+                                                                        <h6>7 activități</h6>
+                                    <a href="/activities?subject=Ecologie" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/06092206132446.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Bodybuilding</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Bodybuilding" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/06092206162975.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Atletica grea</h4>
+                                                                        <h6>0 activități</h6>
+                                    <a href="/activities?subject=Atletica grea" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/0709221110324.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Jocuri de societate</h4>
+                                                                        <h6>16 activități</h6>
+                                    <a href="/activities?subject=Jocuri de societate" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/08092207223671.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Aeromodelare</h4>
+                                                                        <h6>15 activități</h6>
+                                    <a href="/activities?subject=Aeromodelare" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/08092210494117.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Creație tehnică</h4>
+                                                                        <h6>34 activități</h6>
+                                    <a href="/activities?subject=Creație tehnică" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/08092210531110.png">
+                                                                <div class="category-item-features">
+                                    <h4>Design poligrafic</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Design poligrafic" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/26092206452711.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Pictură</h4>
+                                                                        <h6>23 activități</h6>
+                                    <a href="/activities?subject=Pictură" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/18052614362252.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Înot</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Înot" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/18052614371259.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Ceramică</h4>
+                                                                        <h6>2 activități</h6>
+                                    <a href="/activities?subject=Ceramică" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/18052614380214.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Folclor</h4>
+                                                                        <h6>2 activități</h6>
+                                    <a href="/activities?subject=Folclor" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/05062610420332.jpeg">
+                                                                <div class="category-item-features">
+                                    <h4>Fotbal</h4>
+                                                                        <h6>2 activități</h6>
+                                    <a href="/activities?subject=Fotbal" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/05062610512663.jpeg">
+                                                                <div class="category-item-features">
+                                    <h4>Volei</h4>
+                                                                        <h6>3 activități</h6>
+                                    <a href="/activities?subject=Volei" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/05062611070833.jpg">
+                                                                <div class="category-item-features">
+                                    <h4>Teqball</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Teqball" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/05062611081092.jpeg">
+                                                                <div class="category-item-features">
+                                    <h4>Tenis</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Tenis" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div><div class="owl-item" style="width: 352px; margin-right: 30px;"><div class="category-item">
+                                                                    <img src="/assets/images/categories/08062608343927.jpeg">
+                                                                <div class="category-item-features">
+                                    <h4>Lupte libere</h4>
+                                                                        <h6>1 activități</h6>
+                                    <a href="/activities?subject=Lupte libere" class="btn btn-primary">Vezi toate</a>
+                                </div>
+                            </div></div></div></div><div class="owl-nav"><button type="button" role="presentation" class="owl-prev disabled"><i class="bi bi-chevron-left"></i></button><button type="button" role="presentation" class="owl-next"><i class="bi bi-chevron-right"></i></button></div><div class="owl-dots"><button role="button" class="owl-dot active"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button><button role="button" class="owl-dot"><span></span></button></div></div>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="home-activities">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="section-title">ACTIVITĂȚI POPULARE</h2>
+            </div>
+        </div>
+        <div class="row activities-items">
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-pentru-tineri-vara-la-centru330">
+                                                    <img src="/assets/images/activities/08062608545628.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program pentru tineri „Vara la Centru”</h4>
+                    <p>
+                        Cauți idei pentru timpul liber?
+ Programul „Vara la Centru” îți aduce în fiecare săptămână act...
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Muzică,
+                                                                    Dezvoltare personală,
+                                                                    Explorare,
+                                                                    Limbi străine,
+                                                                    Educație financiară,
+                                                                    Artă culinară,
+                                                                    Șah și dame,
+                                                                    Jocuri de societate,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            Centrul Municipal de Tineret Chișinău
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            16 - 35 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            5 centre de tineret sunt amplasate în toate cele 5 sectoare ale municipiului Chișinău
+                        </li>
+                    </ul>
+                    <a href="/activity/program-pentru-tineri-vara-la-centru330" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-de-antrenament-la-volei-nivel-avansat-in-parcul-valea-morilor329">
+                                                    <img src="/assets/images/activities/08062608450862.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program de antrenament la volei (nivel avansat) în Parcul „Valea Morilor”</h4>
+                    <p>
+                        Program de antrenament la volei (nivel avansat) în Parcul „Valea Morilor” - activități de perfe...
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Volei,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            17 - 35 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            Parcul „Valea Morilor”
+                        </li>
+                    </ul>
+                    <a href="/activity/program-de-antrenament-la-volei-nivel-avansat-in-parcul-valea-morilor329" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-de-antrenament-la-lupte-libere328">
+                                                    <img src="/assets/images/activities/08062608403366.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program de antrenament la lupte libere</h4>
+                    <p>
+                        Activități de pregătire fizică generală, specială la lupta liberă, jocuri de consolidare a abil...
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Lupte libere,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            Școala sportivă pentru copii și juniori nr.12
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            8 - 12 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            str. Alexandru cel Bun 2, comuna Ciorescu în incinta LT „N. Bălcescu”
+                        </li>
+                    </ul>
+                    <a href="/activity/program-de-antrenament-la-lupte-libere328" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-de-antrenament-la-volei-mixt-baieti-si-fete-in-parcul-valea-trandafirilor327">
+                                                    <img src="/assets/images/activities/0806260833199.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program de antrenament la volei mixt (băieți și fete) în Parcul „Valea Trandafirilor”</h4>
+                    <p>
+                        Antrenamente la proba volei pentru băieți și fete în Parcul „Valea Trandafirilor”
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Volei,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            Școala sportivă pentru copii și juniori nr.12
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            12 - 16 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            Parcul „Valea Trandafirilor”
+                        </li>
+                    </ul>
+                    <a href="/activity/program-de-antrenament-la-volei-mixt-baieti-si-fete-in-parcul-valea-trandafirilor327" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-de-antrenament-la-volei-masculin-in-parcul-valea-morilor326">
+                                                    <img src="/assets/images/activities/08062608173024.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program de antrenament la volei masculin în Parcul „Valea Morilor”</h4>
+                    <p>
+                        Program de antrenament la volei masculin desfășurat în Parcul „Valea Morilor” pentru băieți	cu ...
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Bodybuilding,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            Școala sportivă pentru copii și juniori nr.12
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            14 - 16 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            Parcul „Valea Morilor”
+                        </li>
+                    </ul>
+                    <a href="/activity/program-de-antrenament-la-volei-masculin-in-parcul-valea-morilor326" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            <div class="col-md-4">
+            <div class="activities-item">
+                <div class="activities-item-image position-relative">
+                    <a href="/activity/program-de-antrenamente-la-fotbal-tenis-si-teqball-pentru-incepatori-si-avansati325">
+                                                    <img src="/assets/images/activities/050626110305100.jpg">
+                                            </a>
+                </div>
+                <div class="activities-item-features">
+                    <h4>Program de antrenamente la fotbal, tenis și teqball pentru începători și avansați</h4>
+                    <p>
+                        Program de antrenamente la fotbal, tenis și teqball pentru începători și avansați organizat în ...
+                    </p>
+                    <ul>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-bookmark-check"></i></div>
+                                                                                                                            Sport,
+                                                                    Fotbal,
+                                                                    Teqball,
+                                                                    Tenis,
+                                                                                    </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-building"></i></div>
+                            Școala sportivă pentru copii și juniori nr.12
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-people"></i></div>
+                            12 - 18 ani
+                        </li>
+                        <li>
+                            <div class="activities-item-icon"><i class="bi bi-geo-alt"></i></div>
+                            Orașul Vadul lui Vodă, str. Nistreană 29
+                        </li>
+                    </ul>
+                    <a href="/activity/program-de-antrenamente-la-fotbal-tenis-si-teqball-pentru-incepatori-si-avansati325" class="btn btn-primary">Detalii</a>
+                </div>
+            </div>
+        </div>
+            </div>
+        <div class="row">
+            <div class="col-md-12 text-center mt-5">
+                <a href="/activities" class="btn btn-primary all-activities btn-lg">VEZI TOATE ACTIVITĂȚILE</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="footer">
+    <div class="footer-logo">
+        <img src="/assets/images/logo-white.png" class="footer_logo_w">
+    </div>
+    <div class="footer-links">
+        <a href="/">Acasă</a>
+        <a href="/categories">Categorii</a>
+        <a href="/activities">Toate Activitățile</a>
+        <a href="/news">Noutăți și Evenimente</a>
+        <a href="/contacts">Contacte</a>
+    </div>
+    <div class="footer-logo footer-parent-logo">
+        <img src="/assets/images/dgets.png" class="footer_logo_ch mx-2">
+        <img src="/assets/images/logo_chisinau.png" class="footer_logo_ch">
+
+    </div>
+</section>
+
+
+
+
+
+
+    
+
+
+
+<div class="sm-wrapper sm-active myPopupClass" data-sm-type="delayed" data-sm-type-val="0s" data-sm-autoclose="enable" data-sm-autoclose-after="1000000s" style="display: block;"><div class="sm-popup" data-sm-animated="true" data-sm-position="bottomLeft" data-sm-effect="fadeIn" style="width: fit-content; height: 600px; background: rgb(255, 255, 255); margin: 40px 24px 24px; padding: 24px; animation-duration: 0.4s; animation-delay: 0s;"><div class="sm-button" data-sm-button-style="text label" data-sm-button-align="right" data-sm-button-place="outside" data-sm-button-text="Închide(X)" data-sm-close="true"></div><div id="pchi_banner_586" class=" banner_popup " data-sm-init="false">
+    
+    
+
+        
+
+        <a href="https://www.chisinau.md/ro/redirectToBanner/586/ro" target="_blank">
+            <img src="https://www.chisinau.md/files/system/banners/2026/Septembrie/EDUCA%C8%9AIE%20Septembrie/2_1_eGradinita.gif" alt="" id="desktopElement" style="display: block;">
+            <img src="https://www.chisinau.md/files/system/banners/2026/Septembrie/EDUCA%C8%9AIE%20Septembrie/2_1_eGradinita.gif" alt="" id="tabletElement" style="display: none;">
+            <img src="https://www.chisinau.md/files/system/banners/2026/Septembrie/EDUCA%C8%9AIE%20Septembrie/2_eGradinita.gif" alt="" id="mobileElement" style="display: none;">
+        </a>
+    </div></div></div></body></html>
