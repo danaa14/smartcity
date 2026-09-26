@@ -9,6 +9,7 @@ import { logAsk } from "@/lib/staff/events";
 import { AI } from "@/lib/ai/config";
 import type { Lang } from "@/lib/corpus/types";
 import type { Answer } from "@/lib/answer/types";
+import { detectLang } from "@/lib/text";
 
 export const runtime = "nodejs";
 
@@ -84,7 +85,9 @@ export async function POST(req: Request) {
   if (!question) return NextResponse.json({ error: "empty_question" }, { status: 400 });
   if (question.length > MAX_QUESTION) return NextResponse.json({ error: "too_long" }, { status: 400 });
 
-  const lang: Lang = body?.lang === "ru" ? "ru" : "ro";
+  const uiLang: Lang = body?.lang === "ru" ? "ru" : "ro";
+  const hasCyrillic = /[\u0400-\u04FF]/.test(question);
+  const lang: Lang = hasCyrillic ? detectLang(question) : uiLang;
   const history = historyOf(Array.isArray(body?.history) ? body.history : []);
   const doc = documentOf(body?.document);
   const wantsStream = (req.headers.get("accept") ?? "").includes("text/event-stream");
