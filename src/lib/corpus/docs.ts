@@ -10,6 +10,25 @@ const NO_DATE = {
 
 export const DOCS: SourceDoc[] = [
   {
+    id: "voice-annex-source-list",
+    kind: "real",
+    title: "Annex 1 — List of Data Sources",
+    titleTranslation: { ro: "Anexa 1 — Lista surselor de date", ru: "Приложение 1 — Список источников данных" },
+    url: null,
+    publisher: "Annex 1",
+    annexCategory: null,
+    annexStartUrl: null,
+    lang: "en",
+    docType: { ro: "Listă de surse municipale", ru: "Список муниципальных источников" },
+    retrievedAt: "2026-09-26",
+    status: "unknown",
+    statusNote: {
+      ro: "Anexa enumeră categorii și adrese web; nu conține procedurile sau regulile publicate pe aceste site-uri și nu confirmă dacă adresele sunt încă actuale.",
+      ru: "В приложении перечислены категории и веб-адреса; в нём нет процедур и правил с этих сайтов, а актуальность адресов не подтверждается.",
+    },
+    rawFile: "corpus/raw/voice-annex.txt",
+  },
+  {
     id: "acc-contract-apart",
     kind: "real",
     title: "Contractare cu proprietari de apartamente",

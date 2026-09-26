@@ -28,7 +28,7 @@ export default async function SourceDetail(props: PageProps<"/surse/[id]">) {
   const meta: [string, React.ReactNode][] = [
     [t({ ro: "Emitent / responsabil", ru: "Издатель / ответственный" }), d.publisher],
     [t({ ro: "Tip", ru: "Тип" }), d.docType[lang]],
-    [t({ ro: "Limba", ru: "Язык" }), d.lang === "ro" ? "română" : "русский"],
+    [t({ ro: "Limba", ru: "Язык" }), d.lang === "ro" ? "română" : d.lang === "ru" ? "русский" : "English"],
     [t({ ro: "Data publicării", ru: "Дата публикации" }), d.publishedAt ? fmtDate(d.publishedAt, lang) : t({ ro: "neindicată", ru: "не указана" })],
     [t({ ro: "În vigoare din", ru: "Действует с" }), d.effectiveAt ? fmtDate(d.effectiveAt, lang) : t({ ro: "neindicat", ru: "не указано" })],
     [t({ ro: "Revizuire", ru: "Редакция" }), d.revisedAt ? fmtDate(d.revisedAt, lang) : t({ ro: "neindicată", ru: "не указана" })],
@@ -49,7 +49,7 @@ export default async function SourceDetail(props: PageProps<"/surse/[id]">) {
         {d.url ? (
           <p><ExternalLink href={d.url} lang={lang}>{d.url}</ExternalLink></p>
         ) : (
-          <Notice tone="demo" title={t({ ro: "Document fictiv", ru: "Вымышленный документ" })}>{d.statusNote[lang]}</Notice>
+          <Notice tone={d.kind === "demo" ? "demo" : "warn"} title={d.kind === "demo" ? t({ ro: "Document fictiv", ru: "Вымышленный документ" }) : t({ ro: "Notă despre sursă", ru: "Примечание об источнике" })}>{d.statusNote[lang]}</Notice>
         )}
       </header>
 

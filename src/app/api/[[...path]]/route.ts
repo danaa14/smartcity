@@ -12,6 +12,7 @@ import * as scanReview from "@/server/api/scan-review";
 import * as tickets from "@/server/api/tickets";
 import * as ticketsId from "@/server/api/tickets-id";
 import * as ticketsIdMediaFile from "@/server/api/tickets-id-media-file";
+import * as voice from "@/server/api/voice";
 
 export const runtime = "nodejs";
 // Single function serves every API route (Vercel Hobby caps functions at 12).
@@ -28,6 +29,9 @@ function pick(segments: string[], method: string): Handler | null {
     typeof fn === "function" ? (fn as Handler) : null;
   const [a, b, c, d] = segments;
   if (a === "ask" && !b) return method === "POST" ? call(ask.POST) : null;
+  if (a === "voice" && b === "ready" && !c) return method === "GET" ? call(voice.ready) : null;
+  if (a === "voice" && b === "token" && !c) return method === "POST" ? call(voice.token) : null;
+  if (a === "voice" && b === "search" && !c) return method === "POST" ? call(voice.search) : null;
   if (a === "feedback" && !b) return method === "POST" ? call(feedback.POST) : null;
   if (a === "inventory" && !b) return method === "GET" ? call(inventory.GET) : null;
   if (a === "ocr" && !b) return method === "POST" ? call(ocr.POST) : null;

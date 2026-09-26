@@ -184,7 +184,7 @@ export interface PassageHit {
 }
 
 /** BM25 search across every indexed passage. Used by the source browser and the answer pipeline. */
-export function searchPassages(query: string, limit = 12): PassageHit[] {
+export function searchPassages(query: string, limit = 12, allowedDocIds?: readonly string[]): PassageHit[] {
   const idx = index();
   const qt = [...new Set(contentTokens(query))];
   if (!qt.length) return [];
@@ -224,6 +224,7 @@ export function searchPassages(query: string, limit = 12): PassageHit[] {
       score: Math.round(v.score * 1000) / 1000,
       coverage: Math.round(([...v.hit].reduce((s, q) => s + weight.get(q)!, 0) / total) * 1000) / 1000,
     }))
+    .filter((hit) => !allowedDocIds || allowedDocIds.includes(hit.passage.docId))
     .sort((a, b) => b.coverage - a.coverage || b.score - a.score)
     .slice(0, limit);
 }

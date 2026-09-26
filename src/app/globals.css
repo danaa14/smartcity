@@ -328,6 +328,33 @@ button:not(:disabled), summary { cursor: pointer; }
 .contact-call { background: #20a344; color: #fff; margin: 22px 0 10px; padding: 13px 24px; }
 .contact-call:hover { background: #188336; }
 .contact-content .contact-source { font-size: 11px; max-width: 340px; margin: 15px auto 0; line-height: 1.7; }
+.voice-call { display: grid; gap: 16px; padding: 5px 0 8px; }
+.voice-call-intro { color: #626b5c; font-size: 13px; line-height: 1.65; }
+.voice-call-status { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border: 1px solid #e5e9dc; border-radius: 14px; background: #fafbf8; font-size: 13px; font-weight: 600; }
+.voice-call-indicator { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: #9ba293; }
+.voice-call-indicator.is-active { background: #64834e; box-shadow: 0 0 0 4px #e8efdf; animation: voice-pulse 1.4s ease-in-out infinite; }
+.voice-call-error { padding: 11px 13px; border-radius: 12px; background: #fff3ef; color: #a43d2d; font-size: 13px; }
+.voice-call-transcript, .voice-call-sources { display: grid; gap: 9px; }
+.voice-call-transcript h3, .voice-call-sources h3 { font-size: 13px; font-weight: 700; }
+.voice-call-transcript ol { display: grid; gap: 9px; max-height: 225px; overflow: auto; padding: 1px 3px 2px 1px; }
+.voice-call-line { width: fit-content; max-width: 92%; padding: 10px 12px; border-radius: 14px; background: #f4f6ef; overflow-wrap: anywhere; }
+.voice-call-line.user { justify-self: end; background: #263025; color: #fff; }
+.voice-call-line strong { display: block; margin-bottom: 3px; font-size: 10px; opacity: .7; }
+.voice-call-line p { font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.voice-call-source-group { display: grid; gap: 7px; padding: 10px 0; border-top: 1px solid #eaede6; }
+.voice-call-source-query { font-size: 12px; font-weight: 600; color: #59644f; overflow-wrap: anywhere; }
+.voice-call-source-group details { border: 1px solid #e7ebdf; border-radius: 11px; padding: 9px 11px; }
+.voice-call-source-group summary { overflow-wrap: anywhere; color: #536247; font-size: 11px; font-weight: 650; }
+.voice-call-source-group details p { margin-top: 8px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.voice-call-actions { display: flex; justify-content: center; }
+.voice-call-start, .voice-call-end { width: 100%; min-height: 48px; border-radius: 15px; padding: 12px 18px; font-size: 14px; font-weight: 650; }
+.voice-call-start { background: #252923; color: #fff; }
+.voice-call-start:hover { background: #3b4037; }
+.voice-call-end { background: #f4e9e6; color: #8f3c30; }
+.voice-call-end:hover { background: #f1dcd7; }
+.voice-call-human { text-align: center; color: #70786c; font-size: 12px; line-height: 1.6; }
+.voice-call-human a { display: block; color: #536b40; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; }
+@keyframes voice-pulse { 50% { box-shadow: 0 0 0 7px #e8efdf60; } }
 .tool-list > a, .tool-list > button { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 17px 0; border-top: 1px solid #eceee7; }
 .tool-list strong { display: block; font-size: 14px; font-weight: 550; }
 .tool-list small { display: block; font-size: 11px; color: #7b8372; margin-top: 4px; }

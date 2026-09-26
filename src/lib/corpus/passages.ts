@@ -1,4 +1,5 @@
 import annexIngest from "../../../corpus/annex-ingest.json";
+import voiceAnnex from "../../../corpus/voice-annex-passages.json";
 import type { Passage } from "./types";
 
 /**
@@ -464,5 +465,14 @@ export const PASSAGES: Passage[] = [
 ];
 
 PASSAGES.push(...(annexIngest.passages as Passage[]));
+PASSAGES.push(...(voiceAnnex as { page: number; section: string; text: string }[]).map((item, index) => ({
+  id: `voice-annex-source-list#p-${index + 1}`,
+  docId: "voice-annex-source-list",
+  locator: { ro: `Pagina ${item.page} · ${item.section}`, ru: `Страница ${item.page} · ${item.section}` },
+  page: item.page,
+  section: item.section,
+  lang: "en" as const,
+  text: item.text,
+})));
 
 export const PASSAGE_BY_ID = new Map(PASSAGES.map((p) => [p.id, p]));
