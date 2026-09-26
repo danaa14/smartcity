@@ -105,6 +105,7 @@ function makeDoc(r, id, url, cap, lines, kind, publisher) {
       lang,
       docType: isHome ? { ro: "Pagină principală (preluare automată)", ru: "Главная страница (автоматическая загрузка)" } : { ro: "Pagină de contact (preluare automată)", ru: "Страница контактов (автоматическая загрузка)" },
       retrievedAt: today,
+      lastCheckedAt: new Date().toISOString(),
       status: "unknown",
       statusNote: {
         ro: "Preluată automat din Anexa 1. Pagina nu afișează data publicării sau a ultimei actualizări; valabilitatea curentă nu poate fi stabilită din corpus.",
@@ -122,9 +123,25 @@ function makeDoc(r, id, url, cap, lines, kind, publisher) {
   };
 }
 
+function changedSinceSnapshot(id, cap) {
+  const file = `corpus/raw/${id}.txt`;
+  try {
+    const previous = readFileSync(file, "utf8").replace(/\s+/g, " ").trim();
+    const current = toLines(cap.text).join(" ").replace(/\s+/g, " ").trim();
+    const metadata = JSON.parse(readFileSync(`corpus/raw/${id}.meta.json`, "utf8"));
+    return previous !== current || metadata.title !== cleanTitle(cap.title) || metadata.finalUrl !== cap.finalUrl;
+  } catch {
+    return true;
+  }
+}
+
+const checks = [];
+
 async function ingest(ctx, r) {
   const id = slugOf(r.startUrl);
   const home = await capture(ctx, r.startUrl);
+  const checkedAt = new Date().toISOString();
+  checks.push({ url: home.finalUrl || r.startUrl, checkedAt, available: true, changed: changedSinceSnapshot(id, home) });
   const publisher = cleanTitle(home.title).split(/\s[|–—-]\s/)[0] || new URL(r.startUrl).hostname;
   const out = [makeDoc(r, id, r.startUrl, home, save(id, r.startUrl, home), "home", publisher)];
   const contactUrl = findContact(home, r.startUrl);
@@ -132,8 +149,10 @@ async function ingest(ctx, r) {
     try {
       const c = await capture(ctx, contactUrl);
       const cid = `${id}-contact`;
+      checks.push({ url: c.finalUrl || contactUrl, checkedAt: new Date().toISOString(), available: true, changed: changedSinceSnapshot(cid, c) });
       out.push(makeDoc(r, cid, contactUrl, c, save(cid, contactUrl, c), "contact", publisher));
     } catch (e) {
+      checks.push({ url: contactUrl, checkedAt: new Date().toISOString(), available: false, changed: null, error: e.message.split("\n")[0] });
       console.warn(`  contact page failed for ${r.startUrl}: ${e.message.split("\n")[0]}`);
     }
   }
@@ -153,6 +172,7 @@ await Promise.all(
         results.push(...docs);
         console.log(`✓ ${r.startUrl} → ${docs.map((d) => `${d.doc.id} (${d.passages.length})`).join(", ")}`);
       } catch (e) {
+        checks.push({ url: r.startUrl, checkedAt: new Date().toISOString(), available: false, changed: null, error: e.message.split("\n")[0] });
         failed.push({ startUrl: r.startUrl, error: e.message.split("\n")[0] });
         console.error(`✗ ${r.startUrl}: ${e.message.split("\n")[0]}`);
       }
@@ -169,4 +189,6 @@ writeFileSync(
   "corpus/annex-ingest.json",
   JSON.stringify({ generatedAt: new Date().toISOString(), failed, docs: kept.map((d) => d.doc), passages: kept.flatMap((d) => d.passages) }, null, 1),
 );
+writeFileSync("corpus/annex-refresh-report.json", JSON.stringify({ checkedAt: new Date().toISOString(), checks }, null, 1));
 console.log(`\n${kept.length} docs, ${kept.reduce((s, d) => s + d.passages.length, 0)} passages; ${results.length - kept.length} pages without citable text; ${failed.length} failed.`);
+console.log(`${checks.filter((check) => check.changed === true).length} changed source snapshots; ${checks.filter((check) => check.changed === false).length} unchanged; ${checks.filter((check) => !check.available).length} unavailable.`);

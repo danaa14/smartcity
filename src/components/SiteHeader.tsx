@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useLang } from "./LangProvider";
+import { AccountMenu } from "./AccountMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Icon } from "./chat/Icon";
 
@@ -28,6 +29,7 @@ export function SiteHeader() {
           <Link className="nav-report" href="/raporteaza" aria-current={reporting ? "page" : undefined}><Icon name="pin" /><span>{t({ ro: "Dă de veste", ru: "Сообщить" })}</span></Link>
         </nav>
       )}
+      <AccountMenu />
       <LangSwitch />
     </header>
   );

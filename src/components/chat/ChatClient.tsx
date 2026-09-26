@@ -8,10 +8,12 @@ import { DocumentTurn, type DocContext } from "./DocumentTurn";
 import type { Answer } from "@/lib/answer/types";
 import { AnswerView } from "../ask/AnswerView";
 import { EXAMPLES } from "@/lib/corpus/examples";
+import { useConversations } from "../ConversationProvider";
+import type { SavedTurn } from "@/lib/chat/types";
 import { VoiceCall } from "./VoiceCall";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
-type DocTurn = { kind: "doc"; id: number; file: File; goal: string; ctx?: DocContext };
+type DocTurn = { kind: "doc"; id: number; file?: File; name?: string; goal: string; ctx?: DocContext };
 type Turn = AskTurn | DocTurn;
 type Sheet = "faq" | "call" | "tools";
 
@@ -34,10 +36,17 @@ const FAQ = [
   { q: { ro: "Trebuie să introduc date personale?", ru: "Нужно вводить личные данные?" }, a: { ro: "Nu cerem nume, telefon sau IDNP. Evitați datele personale în întrebări și fotografii. Documentele scanate sunt șterse după procesare; tichetele demo pot fi șterse din pagina lor. Într-o configurație cu AI extern, întrebarea și sursele sunt trimise furnizorului.", ru: "Мы не запрашиваем имя, телефон или IDNP. Не указывайте личные данные в вопросах и фото. Сканируемые документы удаляются после обработки; демо-заявки можно удалить на их странице. При подключённом внешнем ИИ вопрос и источники передаются провайдеру." } },
 ];
 
-export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string }) {
+export function ChatClient(props: { initialQuestion?: string }) {
+  const history = useConversations();
+  return <ChatSession key={history.revision} {...props} />;
+}
+
+function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const { lang, t } = useLang();
   const [draft, setDraft] = useState("");
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const history = useConversations();
+  const { save } = history;
+  const [turns, setTurns] = useState<Turn[]>(() => history.active?.turns ?? []);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<Sheet>("faq");
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
@@ -51,7 +60,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
   const filePicker = useRef<HTMLInputElement>(null);
   const pending = useRef(false);
   const controller = useRef<AbortController | null>(null);
-  const sequence = useRef(0);
+  const sequence = useRef(Math.max(0, ...turns.map((turn) => turn.id)));
   const initialSent = useRef(false);
   const lastTrigger = useRef<HTMLElement | null>(null);
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -135,11 +144,21 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
   }, [draft]);
 
   useEffect(() => {
-    if (initialQuestion && !initialSent.current) {
+    if (initialQuestion && !history.active && !initialSent.current) {
       initialSent.current = true;
       void ask(initialQuestion);
     }
-  }, [initialQuestion, ask]);
+  }, [initialQuestion, ask, history.active]);
+
+  useEffect(() => () => controller.current?.abort(), []);
+
+  useEffect(() => {
+    if (busy || !turns.length) return;
+    const saved: SavedTurn[] = turns.flatMap((turn): SavedTurn[] => turn.kind === "ask"
+      ? [{ kind: "ask", id: turn.id, question: turn.question, answer: turn.answer, failed: turn.failed || (!turn.answer ? true : undefined) }]
+      : turn.ctx ? [{ kind: "doc", id: turn.id, name: turn.file?.name ?? turn.name ?? "Document", goal: turn.goal, ctx: turn.ctx }] : []);
+    save(saved);
+  }, [turns, busy, save]);
 
   useEffect(() => {
     const active = scroll.current?.querySelector<HTMLElement>("[data-latest]");
@@ -191,11 +210,11 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
           <div className="conversation">
             <h1 className="sr-only">{t({ ro: "Conversația ta", ru: "Ваш диалог" })}</h1>
             {turns.map((turn, index) => turn.kind === "doc" ? (
-              <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={turn.file.name}>
-                <div className="user-message user-file"><Icon name="document" /><span>{turn.file.name}</span></div>
+              <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={(turn.file?.name ?? turn.name)}>
+                <div className="user-message user-file"><Icon name="document" /><span>{(turn.file?.name ?? turn.name)}</span></div>
                 {turn.goal && <div className="user-message">{turn.goal}</div>}
                 <div className="assistant-label"><span className="assistant-dot" />pe fir</div>
-                <DocumentTurn file={turn.file} goal={turn.goal} onReady={(ctx) => setTurns((prev) => prev.map((x) => (x.id === turn.id && x.kind === "doc" ? { ...x, ctx } : x)))} />
+                {turn.file ? <DocumentTurn file={turn.file} goal={turn.goal} onReady={(ctx) => setTurns((prev) => prev.map((x) => (x.id === turn.id && x.kind === "doc" ? { ...x, ctx } : x)))} /> : <div className="chat-answer"><p>{turn.ctx?.summary}</p></div>}
               </section>
             ) : (
               <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={turn.question}>

@@ -1,9 +1,14 @@
-// Throws 100 awkward, silly and adversarial questions at /api/ask and audits the replies.
+// Throws 99 awkward, silly and adversarial questions at /api/ask and audits the replies.
 // Flags empty/truncated answers, markdown leakage, wrong language, uncited corpus claims,
 // refusals where the assistant should have helped, and answers that should have been refused.
 // Run with the dev server on :3100:  node scripts/stress-check.mjs
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 const BASE = process.env.BASE ?? "http://localhost:3100";
-const CONCURRENCY = 3;
+// Keep requests below the chat route's 30/minute local per-client limit.
+const CONCURRENCY = 1;
+const CLIENT_KEY = `eval-${process.pid}-${Date.now()}`;
 
 // expect: "answer" = must genuinely help, "refuse" = must decline, "any" = just must not break,
 //         "corpus" = must come back cited from the indexed sources.
@@ -124,20 +129,23 @@ const results = [];
 
 async function ask(question, lang) {
   const t0 = Date.now();
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const r = await fetch(`${BASE}/api/ask`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ question, lang }),
-    });
-    if (r.status === 429) {
-      await new Promise((s) => setTimeout(s, 8000));
-      continue;
-    }
-    const body = await r.json().catch(() => null);
-    return { http: r.status, body, ms: Date.now() - t0 };
-  }
-  return { http: 429, body: null, ms: Date.now() - t0 };
+  const r = await fetch(`${BASE}/api/ask`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": CLIENT_KEY },
+    body: JSON.stringify({ question, lang }),
+  });
+  const body = await r.json().catch(() => null);
+  return { http: r.status, body, ms: Date.now() - t0 };
+}
+
+async function searchVoice(question, lang) {
+  const response = await fetch(`${BASE}/api/voice/search`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": CLIENT_KEY },
+    body: JSON.stringify({ query: question, lang }),
+  });
+  const body = await response.json().catch(() => null);
+  return { http: response.status, body };
 }
 
 const CYR = /[Ѐ-ӿ]/;
@@ -149,7 +157,9 @@ function audit(q, lang, expect, res) {
   const a = res.body;
   if (!a || a.error) return { flags: [`error_${a?.error ?? "null"}`], text: "", kind: "-" };
 
-  const text = a.kind === "prose" ? (a.prose ?? "") : a.claims.map((c) => c.text[lang]).join(" ");
+  const text = a.kind === "prose"
+    ? (a.prose ?? "")
+    : [...a.claims.map((c) => c.text[lang]), ...a.missing.map((item) => item[lang]), ...a.contacts.map((c) => c.text[lang])].join(" ");
   const trimmed = text.trim();
 
   if (!trimmed) flags.push("EMPTY");
@@ -178,8 +188,26 @@ await Promise.all(
   Array.from({ length: CONCURRENCY }, async () => {
     for (let job; (job = queue.shift()); ) {
       const res = await ask(job.q, job.lang);
+      const voice = await searchVoice(job.q, job.lang);
       const a = audit(job.q, job.lang, job.expect, res);
-      results[job.i] = { ...job, ...a, ms: res.ms };
+      const voiceResults = voice.body?.results ?? [];
+      const voiceFlags = [];
+      if (voice.http !== 200) voiceFlags.push(`http_${voice.http}`);
+      if (voiceResults.some((source) => source.sourceType !== "official" || !source.url)) voiceFlags.push("non_official_or_unlinked_source");
+      if (job.expect === "corpus" && voice.http === 200 && voiceResults.length === 0) voiceFlags.push("voice_no_source_for_expected_corpus_case");
+      results[job.i] = {
+        ...job, ...a, ms: res.ms,
+        voice: {
+          spokenQuestionFixture: job.q,
+          recognizedTranscriptFixture: job.q,
+          selectedLanguage: job.lang,
+          searchStatus: voice.http,
+          citedPassages: voiceResults,
+          missingParts: voice.body?.missingParts ?? [],
+          evaluation: voiceFlags.length ? "fail" : voiceResults.length ? "source_candidates" : "abstained",
+          flags: voiceFlags,
+        },
+      };
       done++;
       if (done % 10 === 0) console.error(`… ${done}/${Q.length}`);
     }
@@ -187,7 +215,13 @@ await Promise.all(
 );
 
 const bad = results.filter((r) => r.flags.length);
+const voiceBad = results.filter((r) => r.voice.flags.length);
 console.log(`\n${"=".repeat(78)}\n${results.length - bad.length}/${results.length} clean\n${"=".repeat(78)}`);
+console.log(`voice retrieval: ${results.length - voiceBad.length}/${results.length} passed source-scope checks; ${results.filter((r) => r.voice.evaluation === "abstained").length} abstentions`);
+const reportPath = process.env.EVAL_OUTPUT ?? join(tmpdir(), "pe-fir-99-case-evaluation.json");
+mkdirSync(dirname(reportPath), { recursive: true });
+writeFileSync(reportPath, JSON.stringify({ generatedAt: new Date().toISOString(), base: BASE, textCases: results.length, note: "Voice audio and transcription are simulated using the canonical question text; this report validates text answers and voice retrieval/source scope, not microphone recognition or generated speech.", results }, null, 2));
+console.log(`per-case evaluation report: ${reportPath}`);
 
 const counts = {};
 for (const r of bad) for (const f of r.flags) counts[f] = (counts[f] ?? 0) + 1;
@@ -205,4 +239,4 @@ if (bad.length) {
 const ms = results.map((r) => r.ms).sort((a, b) => a - b);
 console.log(`\nlatency  median=${ms[ms.length >> 1]}ms  p90=${ms[Math.floor(ms.length * 0.9)]}ms  max=${ms.at(-1)}ms`);
 console.log(`kinds: ${JSON.stringify(results.reduce((a, r) => ((a[r.kind] = (a[r.kind] ?? 0) + 1), a), {}))}`);
-process.exit(bad.length ? 1 : 0);
+process.exit(bad.length || voiceBad.length ? 1 : 0);

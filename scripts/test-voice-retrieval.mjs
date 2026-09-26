@@ -1,12 +1,28 @@
 import assert from "node:assert/strict";
+import { DOCS, DOC_BY_ID } from "../src/lib/corpus/docs.ts";
 import { searchPassages } from "../src/lib/retrieval/index.ts";
+import { retrieve } from "../src/lib/retrieval/index.ts";
 
-const allowed = ["voice-annex-source-list"];
-const health = searchPassages("healthcare institutions", 8, allowed).filter((hit) => hit.coverage >= 0.16);
-assert.ok(health.some((hit) => hit.passage.section === "Healthcare" && hit.passage.page === 1), "healthcare query should cite the correct Annex page and section");
-assert.ok(health.every((hit) => hit.passage.docId === allowed[0]), "voice results must come only from the approved PDF");
+// Production voice scope: pages indexed from Annex 1, never Annex 1 itself or demo fixtures.
+const officialIds = DOCS
+  .filter((doc) => doc.kind === "real" && doc.url && doc.id !== "voice-annex-source-list")
+  .map((doc) => doc.id);
+assert.ok(officialIds.length >= 60, "the actual pages linked from Annex 1 should be indexed");
 
-const unsupported = searchPassages("water connection deadline requirements", 8, allowed).filter((hit) => hit.coverage >= 0.16);
-assert.equal(unsupported.length, 0, "Annex source index must not answer a service-procedure question");
+const tariff = searchPassages("Apă-Canal apă potabilă tarif", 8, officialIds);
+assert.ok(tariff.some((hit) => hit.passage.docId === "acc-tarif"), "water-tariff question should retrieve its actual source page");
 
-console.log("Voice retrieval returns only the approved Annex passages and leaves unsupported service questions unanswered.");
+const road = searchPassages("Exdrupo întreținerea și reparația drumurilor", 8, officialIds);
+assert.ok(road.some((hit) => hit.passage.docId.includes("exdrupo")), "road-maintenance question should retrieve the road-service source");
+
+for (const hit of [...tariff, ...road]) {
+  const doc = DOC_BY_ID.get(hit.passage.docId);
+  assert.equal(doc?.kind, "real", "production retrieval must never return a DEMO record");
+  assert.ok(doc?.url, "citizen-facing passages must carry a clickable official source URL");
+}
+
+const terrace = retrieve("Cu câte zile înainte depun cererea pentru terasă sezonieră?");
+assert.ok(terrace.candidates.every((candidate) => !candidate.topicId.startsWith("demo-")), "normal retrieval must not rank demo topics");
+assert.ok(terrace.passages.every((hit) => DOC_BY_ID.get(hit.passage.docId)?.kind === "real"), "normal retrieval passages must exclude demos");
+
+console.log(`Voice retrieval scope checks passed (${officialIds.length} official pages eligible); Annex catalogue and demos are excluded.`);
