@@ -9,14 +9,16 @@ import type { ReviewItem, ReviewState } from "@/lib/feedback";
 import type { Ticket } from "@/lib/tickets/types";
 import { CATEGORIES } from "@/lib/tickets/types";
 import type { L10n, Passage } from "@/lib/corpus/types";
+import type { StaffMetrics } from "@/lib/staff/metrics";
 import { fmtDateTime } from "@/lib/i18n";
+import { CoverageSection, EvidenceSection, TicketAnalytics } from "./StaffCharts";
 
 export interface ConflictCandidate {
   group: string;
   sides: { value: string; quote: string; passage: Passage; doc: { id: string; title: string; kind: "real" | "demo"; publishedAt?: string; revisedAt?: string } }[];
 }
 
-type Section = "overview" | "gaps" | "conflicts" | "citations" | "ratings" | "tickets";
+type Section = "overview" | "coverage" | "gaps" | "conflicts" | "citations" | "ratings" | "tickets" | "evidence";
 
 const STATE_LABEL: Record<ReviewState, L10n> = {
   new: { ro: "Nou", ru: "Новый" },
@@ -37,7 +39,7 @@ const STATUS_LABEL: Record<string, L10n> = {
   contradiction: { ro: "Contradicție", ru: "Противоречие" },
 };
 
-export function StaffClient({ items: initial, tickets, conflicts, unknownValidity }: { items: ReviewItem[]; tickets: Ticket[]; conflicts: ConflictCandidate[]; unknownValidity: { id: string; title: string; note: L10n }[] }) {
+export function StaffClient({ items: initial, tickets, conflicts, unknownValidity, metrics }: { items: ReviewItem[]; tickets: Ticket[]; conflicts: ConflictCandidate[]; unknownValidity: { id: string; title: string; note: L10n }[]; metrics: StaffMetrics }) {
   const { lang, t } = useLang();
   const [items, setItems] = useState(initial);
   const [section, setSection] = useState<Section>("overview");
@@ -69,11 +71,13 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
 
   const nav: { id: Section; icon: string; label: L10n; count?: number }[] = [
     { id: "overview", icon: "◧", label: { ro: "Panoramă", ru: "Обзор" } },
+    { id: "coverage", icon: "◈", label: { ro: "Acoperire", ru: "Покрытие" } },
     { id: "gaps", icon: "○", label: { ro: "Lacune", ru: "Пробелы" }, count: stats.openGaps },
     { id: "conflicts", icon: "⚠", label: { ro: "Contradicții", ru: "Противоречия" }, count: conflicts.length },
     { id: "citations", icon: "⚑", label: { ro: "Citări", ru: "Цитаты" }, count: items.filter((i) => i.kind === "citation_report" && i.state === "new").length },
     { id: "ratings", icon: "◍", label: { ro: "Evaluări", ru: "Оценки" }, count: stats.ratings },
     { id: "tickets", icon: "▤", label: { ro: "Tichete", ru: "Заявки" }, count: tickets.length },
+    { id: "evidence", icon: "◫", label: { ro: "Dovezi", ru: "Доказательства" } },
   ];
 
   const filtersVisible = section === "gaps" || section === "citations" || section === "ratings";
@@ -115,8 +119,12 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
         )}
 
         {section === "overview" && (
-          <Overview stats={stats} conflicts={conflicts.length} tickets={tickets} unknownValidity={unknownValidity.length} onGo={setSection} />
+          <Overview stats={stats} conflicts={conflicts.length} tickets={tickets} unknownValidity={unknownValidity.length} metrics={metrics} onGo={setSection} />
         )}
+
+        {section === "coverage" && <CoverageSection m={metrics} />}
+
+        {section === "evidence" && <EvidenceSection m={metrics} />}
 
         {section === "gaps" && (
           <section className="bo-panel">
@@ -289,6 +297,8 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
         )}
 
         {section === "tickets" && (
+          <>
+          <TicketAnalytics m={metrics.tickets} />
           <section className="bo-panel">
             <div className="bo-panel-head">
               <div>
@@ -322,22 +332,26 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
               </div>
             )}
           </section>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function Overview({ stats, conflicts, tickets, unknownValidity, onGo }: { stats: { openGaps: number; ratings: number; useful: number; pct: number | null }; conflicts: number; tickets: Ticket[]; unknownValidity: number; onGo: (s: Section) => void }) {
+function Overview({ stats, conflicts, tickets, unknownValidity, metrics, onGo }: { stats: { openGaps: number; ratings: number; useful: number; pct: number | null }; conflicts: number; tickets: Ticket[]; unknownValidity: number; metrics: StaffMetrics; onGo: (s: Section) => void }) {
   const { t } = useLang();
   const openTickets = tickets.filter((k) => (k.status ?? "active") !== "done").length;
+  const { coverage, corpus, questions } = metrics;
+  const unmatchedPct = questions.logged ? Math.round((coverage.unmatched / questions.logged) * 100) : 0;
 
   return (
     <>
       <dl className="bo-tiles">
         <Tile label={{ ro: "Lacune noi", ru: "Новые пробелы" }} value={stats.openGaps} note={{ ro: "întrebări fără dovadă", ru: "вопросов без доказательства" }} alert={stats.openGaps > 0} />
+        <Tile label={{ ro: "Fără subiect", ru: "Без темы" }} value={`${unmatchedPct}%`} note={{ ro: `${coverage.unmatched} întrebări nu au nimerit nimic`, ru: `${coverage.unmatched} вопросов ни во что не попали` }} alert={unmatchedPct > 50} />
         <Tile label={{ ro: "Contradicții", ru: "Противоречия" }} value={conflicts} note={{ ro: "grupuri de valori divergente", ru: "групп расходящихся значений" }} alert={conflicts > 0} />
-        <Tile label={{ ro: "Valabilitate nestabilită", ru: "Действительность не установлена" }} value={unknownValidity} note={{ ro: "surse reale fără dată", ru: "реальных источников без даты" }} />
+        <Tile label={{ ro: "Valabilitate nestabilită", ru: "Действительность не установлена" }} value={unknownValidity} note={{ ro: `din ${corpus.realDocs} surse reale`, ru: `из ${corpus.realDocs} реальных источников` }} />
         <Tile label={{ ro: "Utilitate", ru: "Полезность" }} value={stats.pct == null ? "—" : `${stats.pct}%`} note={{ ro: `${stats.useful} din ${stats.ratings} evaluări`, ru: `${stats.useful} из ${stats.ratings} оценок` }} />
         <Tile label={{ ro: "Tichete deschise", ru: "Открытые заявки" }} value={openTickets} note={{ ro: `din ${tickets.length} în total`, ru: `из ${tickets.length} всего` }} />
       </dl>
@@ -350,6 +364,7 @@ function Overview({ stats, conflicts, tickets, unknownValidity, onGo }: { stats:
           </div>
         </div>
         <div className="bo-rows">
+          <Jump onGo={onGo} to="coverage" n={coverage.unmatched} title={{ ro: "Întrebări în afara corpusului", ru: "Вопросы вне корпуса" }} body={{ ro: `${corpus.passages} pasaje indexate susțin doar ${corpus.facts} afirmații, pe ${corpus.topics} subiecte. Restul întrebărilor nu au unde ateriza.`, ru: `${corpus.passages} проиндексированных фрагментов подкрепляют лишь ${corpus.facts} утверждений по ${corpus.topics} темам. Остальным вопросам некуда приземлиться.` }} />
           <Jump onGo={onGo} to="gaps" n={stats.openGaps} title={{ ro: "Lacune de completat", ru: "Пробелы для заполнения" }} body={{ ro: "Întrebări reale la care corpusul nu are nimic de citat.", ru: "Реальные вопросы, на которые в корпусе нечего процитировать." }} />
           <Jump onGo={onGo} to="conflicts" n={conflicts} title={{ ro: "Contradicții de arbitrat", ru: "Противоречия для разрешения" }} body={{ ro: "Două documente, două valori. Trebuie decis care este în vigoare.", ru: "Два документа, два значения. Нужно решить, какой действует." }} />
           <Jump onGo={onGo} to="tickets" n={openTickets} title={{ ro: "Tichete deschise", ru: "Открытые заявки" }} body={{ ro: "Sesizări demo care nu au fost încă marcate rezolvate.", ru: "Демо-обращения, ещё не отмеченные решёнными." }} />

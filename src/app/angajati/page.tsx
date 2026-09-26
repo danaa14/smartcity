@@ -7,6 +7,7 @@ import { FACTS } from "@/lib/corpus/facts";
 import { PASSAGE_BY_ID } from "@/lib/corpus/passages";
 import { DOC_BY_ID, DOCS } from "@/lib/corpus/docs";
 import { staffSession } from "@/lib/staff/auth";
+import { buildMetrics } from "@/lib/staff/metrics";
 import { StaffClient, type ConflictCandidate } from "@/components/staff/StaffClient";
 import { StaffGate } from "@/components/staff/StaffGate";
 import { StaffSignOut } from "@/components/staff/StaffSignOut";
@@ -53,7 +54,7 @@ export default async function StaffPage() {
           })}
         </p>
       </header>
-      <StaffClient items={items} tickets={tks} conflicts={corpusConflicts()} unknownValidity={unknownValidity} />
+      <StaffClient items={items} tickets={tks} conflicts={corpusConflicts()} unknownValidity={unknownValidity} metrics={buildMetrics(items, tks)} />
     </div>
   );
 }

@@ -931,8 +931,8 @@ button:not(:disabled), summary { cursor: pointer; }
 .bo-head h1 { margin-top: 7px; font-size: clamp(25px,3.4vw,33px); font-weight: 570; line-height: 1.18; letter-spacing: -1.3px; }
 .bo-head p { margin-top: 9px; max-width: 65ch; color: #777d72; font-size: 13px; line-height: 1.65; }
 
-.bo-tiles { display: grid; grid-template-columns: repeat(auto-fit,minmax(168px,1fr)); gap: 11px; margin-bottom: 22px; }
-.bo-tile { padding: 15px 17px; border: 1px solid #e7e9e2; border-radius: 18px; background: radial-gradient(ellipse at 100% 0%,#f2f6ec 0,transparent 55%),#fff; box-shadow: 0 8px 26px #25351b06; }
+.bo-tiles { display: grid; grid-template-columns: repeat(auto-fit,minmax(146px,1fr)); gap: 10px; margin-bottom: 22px; }
+.bo-tile { padding: 14px 15px; border: 1px solid #e7e9e2; border-radius: 18px; background: radial-gradient(ellipse at 100% 0%,#f2f6ec 0,transparent 55%),#fff; box-shadow: 0 8px 26px #25351b06; }
 .bo-tile dt { color: #7b8172; font-size: 11px; line-height: 1.4; }
 .bo-tile dd { margin-top: 7px; font-size: 27px; font-weight: 570; letter-spacing: -1.1px; line-height: 1; }
 .bo-tile-note { display: block; margin-top: 6px; color: #8b9382; font-size: 10px; font-weight: 500; letter-spacing: 0; }
@@ -1017,3 +1017,21 @@ button:not(:disabled), summary { cursor: pointer; }
   .bo-main { padding: 20px 18px 45px; }
   .bo-bar { grid-template-columns: minmax(78px,auto) minmax(0,1fr) auto; gap: 9px; font-size: 11px; }
 }
+
+/* Back office charts: bars, day columns, the source-to-answer funnel. */
+.bo-sub { margin-bottom: 11px; color: #5f6658; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+.bo-big { font-size: 31px; font-weight: 570; letter-spacing: -1.2px; line-height: 1; }
+
+.bo-days { display: flex; align-items: flex-end; gap: 4px; height: 92px; padding-top: 6px; }
+.bo-day { position: relative; display: flex; flex: 1; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 5px; }
+.bo-day-bar { width: 100%; max-width: 26px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg,#9ab67a,#7b9a5d); }
+.bo-day-tick { color: #9aa094; font-size: 9px; font-variant-numeric: tabular-nums; }
+
+.bo-funnel { display: grid; gap: 13px; }
+.bo-funnel li { display: grid; gap: 5px; }
+.bo-funnel-head { display: flex; align-items: baseline; gap: 9px; }
+.bo-funnel-head strong { font-size: 21px; font-weight: 570; letter-spacing: -.8px; }
+.bo-funnel-head span { color: #5f6658; font-size: 12px; font-weight: 600; }
+.bo-funnel-track { height: 11px; border-radius: 30px; background: #f1f2ee; overflow: hidden; }
+.bo-funnel-fill { display: block; height: 100%; border-radius: 30px; background: linear-gradient(90deg,#a7c087,#65854b); }
+.bo-funnel-note { color: #8b9382; font-size: 11px; }
