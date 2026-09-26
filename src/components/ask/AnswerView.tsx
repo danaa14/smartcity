@@ -45,13 +45,13 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
 
   const markers = (claim: Claim) => (
     <span className="ml-1 inline-flex flex-wrap gap-1 align-baseline">
-      {claim.citations.map((c) => {
+      {claim.citations.map((c, i) => {
         const p = answer.passages[c.passageId];
         const d = answer.docs[p.docId];
         const active = current?.passageId === c.passageId && current.claimId === claim.id;
         return (
           <button
-            key={c.passageId}
+            key={`${claim.id}:${i}`}
             type="button"
             onClick={(e) => open({ passageId: c.passageId, claimId: claim.id, quote: c.quote }, e.currentTarget)}
             aria-pressed={active}
@@ -80,8 +80,8 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
         </span>
       )}
       {xray &&
-        claim.citations.map((c) => (
-          <span key={c.passageId} className="mt-1.5 block border-l-4 border-mark bg-[#fffbe6] px-2 py-1 text-sm" lang={answer.passages[c.passageId].lang}>
+        claim.citations.map((c, i) => (
+          <span key={`${claim.id}:${i}`} className="mt-1.5 block border-l-4 border-mark bg-[#fffbe6] px-2 py-1 text-sm" lang={answer.passages[c.passageId].lang}>
             <span className="font-semibold">[{c.n}]</span> „<mark>{c.quote}</mark>”
           </span>
         ))}
@@ -89,6 +89,36 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
   );
 
   const panel = current && <SourcePanel panelId={`${uid}-source-panel`} answer={answer} sel={current} question={answer.question} onClose={wide ? undefined : closeDialog} />;
+
+  // Answers from the model's own knowledge have no passages to cite, so none of the
+  // evidence machinery below applies — they render as plain prose with a clear warning.
+  if (answer.kind === "prose") {
+    return (
+      <article aria-labelledby={`${uid}-ans-h`} className="prose-answer">
+        <h2 id={`${uid}-ans-h`} ref={headingRef} tabIndex={-1} className="sr-only">
+          {t({ ro: "Răspuns general", ru: "Общий ответ" })}
+        </h2>
+        {answer.unverified && (
+          <p className="unverified-badge">
+            <span aria-hidden="true">⚠</span>
+            {t({ ro: "Fără sursă indexată · verificați înainte de a acționa", ru: "Без индексированного источника · проверьте, прежде чем действовать" })}
+          </p>
+        )}
+        {answer.prose?.split(/\n{2,}/).map((para, i) => (
+          <p key={i} className="prose-paragraph">{para}</p>
+        ))}
+        {!!answer.web?.length && (
+          <div className="prose-links">
+            <span>{t({ ro: "Verificați la:", ru: "Проверьте на:" })}</span>
+            {answer.web.map((r) => (
+              <ExternalLink key={r.url} href={r.url} lang={lang}>{new URL(r.url).hostname.replace(/^www\./, "")}</ExternalLink>
+            ))}
+          </div>
+        )}
+        {answer.unverified && <Feedback answer={answer} />}
+      </article>
+    );
+  }
 
   return (
     <div className={compact ? "compact-answer" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"}>
@@ -239,6 +269,28 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
               </ul>
             )}
             <p className="mt-2 text-xs text-muted">{t({ ro: "Contactele sunt citate de pe paginile oficiale; verificați programul înainte de deplasare.", ru: "Контакты процитированы с официальных страниц; уточните режим работы перед визитом." })}</p>
+          </section>
+        )}
+
+        {answer.web && answer.web.length > 0 && (
+          <section aria-labelledby={`${uid}-web-h`} className="card p-4 sm:p-5">
+            <h3 id={`${uid}-web-h`} className="flex items-center gap-2 font-bold">
+              <span aria-hidden="true">🌐</span>
+              {t({ ro: "De pe web — nu e în corpus", ru: "Из интернета — нет в корпусе" })}
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              {t({ ro: "Aceste rezultate NU sunt verificate ca sursele de mai sus. Deschideți pagina și verificați înainte de a vă baza pe ele.", ru: "Эти результаты НЕ проверены, в отличие от источников выше. Откройте страницу и проверьте, прежде чем полагаться на них." })}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {answer.web.map((w) => (
+                <li key={w.url} className="rounded-lg border border-line p-3">
+                  <ExternalLink href={w.url} lang={lang} className="font-semibold">
+                    {w.title}
+                  </ExternalLink>
+                  {w.snippet && <p className="mt-1 text-sm text-muted">{w.snippet}</p>}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

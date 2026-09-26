@@ -33,8 +33,8 @@ const NOTES: Record<string, L10n> = {
     ru: "Обработано: страница петиций (RO и RU) и контакты в подвале главной. Решения МСК и местные сборы не обработаны (фильтруемые списки без цитируемого текста в HTML).",
   },
   "https://www.chisinau.md/ro/transparenta": {
-    ro: "Accesibil, dar redă conținutul paginii principale; nu a fost găsit un document distinct de citat în timpul acestei rulări.",
-    ru: "Доступно, но показывает содержимое главной; отдельный документ для цитирования не найден.",
+    ro: "Randat în browser și preluat automat. Atenție: redă în mare parte conținutul paginii principale.",
+    ru: "Отрисовано в браузере и загружено автоматически. Внимание: в основном повторяет содержимое главной.",
   },
   "https://www.acc.md/": {
     ro: "Procesat în profunzime: contractare (apartament), întrebări frecvente, contacte, tarife (Hotărârea ANRE nr. 479 reprodusă + istoric).",
@@ -49,30 +49,30 @@ const NOTES: Record<string, L10n> = {
     ru: "URL из приложения показывает «Контакты», а не диаграмму. По ссылке «Model Cerere» найдены страница форм и PDF заявления (обработаны).",
   },
   "https://egradinita.md/": {
-    ro: "Aplicație JavaScript: HTML-ul nu conține text citabil fără execuție în browser. Neprocesat.",
-    ru: "JavaScript-приложение: без выполнения в браузере HTML не содержит цитируемого текста. Не обработано.",
+    ro: "Aplicație JavaScript: HTML-ul brut nu are text, așa că pagina a fost randată în browser înainte de preluare. Conține în principal statistici și meniuri.",
+    ru: "JavaScript-приложение: в сыром HTML нет текста, поэтому страница отрисована в браузере перед загрузкой. В основном статистика и меню.",
   },
   "https://escoala.chisinau.md/": {
-    ro: "Aplicație JavaScript: HTML-ul nu conține text citabil. Neprocesat.",
-    ru: "JavaScript-приложение: HTML не содержит цитируемого текста. Не обработано.",
+    ro: "Aplicație JavaScript, randată în browser înainte de preluare. Conține doar adresa, telefonul și statistica cererilor.",
+    ru: "JavaScript-приложение, отрисовано в браузере перед загрузкой. Содержит только адрес, телефон и статистику заявлений.",
   },
   "https://detsciocana.educ.md/": {
-    ro: "Pagina afișează doar „Loading”; conținutul se încarcă dinamic. Neprocesat.",
-    ru: "Страница показывает только «Loading»; содержимое загружается динамически. Не обработано.",
+    ro: "Pagina afișează inițial „Loading”; conținutul a fost preluat după randare în browser.",
+    ru: "Страница сначала показывает «Loading»; содержимое загружено после отрисовки в браузере.",
   },
   "https://help.chisinau.md/": {
-    ro: "Accesibil (conține un contact DGAMS), dar conținutul este în principal despre răspunsul la criza refugiaților; neinclus în corpus.",
-    ru: "Доступно (есть контакт DGAMS), но содержание в основном о кризисе беженцев; в корпус не включено.",
+    ro: "Preluat automat. Conținutul este în principal despre răspunsul la criza refugiaților.",
+    ru: "Загружено автоматически. Содержание в основном о кризисе беженцев.",
   },
   "https://amt-ciocana.md/": {
-    ro: "Titlul paginii principale este un articol de știri, nu numele instituției. Neprocesat.",
-    ru: "Заголовок главной — новостная статья, а не название учреждения. Не обработано.",
+    ro: "Preluat automat. Titlul paginii principale este un articol de știri, nu numele instituției.",
+    ru: "Загружено автоматически. Заголовок главной — новостная статья, а не название учреждения.",
   },
 };
 
 const DEFAULT_NOTE: L10n = {
-  ro: "Accesibil la verificare (HTTP 200). Nu a fost procesat în această rulare — prioritate a avut o procedură completă și demonstrabilă.",
-  ru: "Доступно при проверке (HTTP 200). В этом прогоне не обработано — приоритет у полной демонстрируемой процедуры.",
+  ro: "Preluat automat (pagina principală și, unde există, pagina de contact), randat în browser. Pasajele sunt fragmente brute ale paginii, fără afirmații pre-extrase; asistentul le poate cita doar prin modul cu model AI sau căutarea în surse.",
+  ru: "Загружено автоматически (главная и, где есть, страница контактов), с отрисовкой в браузере. Фрагменты — сырой текст страницы без заранее извлечённых утверждений; помощник может цитировать их только в режиме ИИ-модели или через поиск по источникам.",
 };
 
 type ProbeRow = { category: string; startUrl: string; probedAt: string; status: number | string; finalUrl?: string; title?: string | null; lang?: string | null; looksJsOnly?: boolean };

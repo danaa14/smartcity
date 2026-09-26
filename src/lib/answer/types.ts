@@ -1,4 +1,5 @@
 import type { Aspect, L10n, Lang, Passage, SourceDoc } from "../corpus/types";
+import type { WebResult } from "../web/search";
 
 export type AnswerStatus = "supported" | "partial" | "missing" | "contradiction";
 
@@ -34,9 +35,21 @@ export interface ValidationReport {
   dropped: { claimId: string; reason: string }[];
 }
 
+/**
+ * `corpus` answers carry verbatim-verified citations and are the app's guarantee.
+ * `prose` answers come from the model's own knowledge when the corpus cannot reach the
+ * question; they are never cited and must always render the unverified badge.
+ */
+export type AnswerKind = "corpus" | "prose";
+
 export interface Answer {
   question: string;
   questionLang: Lang;
+  kind: AnswerKind;
+  /** Plain-language answer in the asker's language. Only set when kind === "prose". */
+  prose?: string;
+  /** Prose that asserts facts, so the UI must show the verify-before-acting warning. */
+  unverified?: boolean;
   status: AnswerStatus;
   topicId: string | null;
   topicTitle: L10n | null;
@@ -56,6 +69,8 @@ export interface Answer {
   passages: Record<string, Passage>;
   docs: Record<string, SourceDoc>;
   validation: ValidationReport;
-  engine: { mode: "deterministic-demo" | "llm" | "llm-fallback"; model?: string; label: L10n; retrieval: { topicScore: number; candidates: { topicId: string; score: number }[] } };
+  engine: { mode: "deterministic-demo" | "llm" | "llm-fallback" | "general"; model?: string; label: L10n; retrieval: { topicScore: number; candidates: { topicId: string; score: number }[] } };
   generatedAt: string;
+  /** Web results — set ONLY when the corpus has nothing (status missing). Unverified, never citations. */
+  web?: WebResult[];
 }

@@ -23,7 +23,7 @@ export default async function SourcesPage(props: PageProps<"/surse">) {
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t({ ro: "Sursele asistentului", ru: "Источники помощника" })}</h1>
         <p className="max-w-3xl text-muted">
-          {t({ ro: "Asistentul răspunde doar din aceste documente. Sursele reale au fost descărcate și verificate la 25.09.2026; fiecare pasaj citat a fost verificat automat că apare exact în pagina preluată. Documentele DEMO sunt fictive și marcate ca atare.", ru: "Помощник отвечает только по этим документам. Реальные источники загружены и проверены 25.09.2026; каждый цитируемый фрагмент автоматически проверен на точное наличие в загруженной странице. DEMO-документы вымышлены и помечены." })}
+          {t({ ro: "Asistentul răspunde doar din aceste documente. Sursele reale au fost descărcate și verificate la 25–26.09.2026; fiecare pasaj citat a fost verificat automat că apare exact în pagina preluată. Documentele DEMO sunt fictive și marcate ca atare.", ru: "Помощник отвечает только по этим документам. Реальные источники загружены и проверены 25–26.09.2026; каждый цитируемый фрагмент автоматически проверен на точное наличие в загруженной странице. DEMO-документы вымышлены и помечены." })}
         </p>
       </header>
 
@@ -136,7 +136,7 @@ export default async function SourcesPage(props: PageProps<"/surse">) {
         ))}
         <p className="text-sm text-muted">
           {t({ ro: "Date brute: ", ru: "Сырые данные: " })}<code>corpus/annex-probe.json</code>, <code>corpus/raw/</code>. {t({ ro: "Export CSV:", ru: "Экспорт CSV:" })}{" "}
-          <a className="link" href="/api/inventory">/api/inventory</a>
+          <Link className="link" href="/api/inventory" target="_blank">/api/inventory</Link>
         </p>
         <p className="text-sm">
           <ExternalLink href="https://www.chisinau.md/ro" lang={lang}>chisinau.md</ExternalLink>

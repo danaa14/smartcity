@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { ScanClient } from "@/components/scan/ScanClient";
+import { AssistantScan } from "@/components/scan/AssistantScan";
+import "@/components/ask/chat-motion.css";
 
-export const metadata: Metadata = { title: "Scanează un document" };
+export const metadata: Metadata = { title: "Asistentul pentru documente" };
 
 export default function ScanPage() {
-  return <ScanClient />;
+  return <AssistantScan />;
 }

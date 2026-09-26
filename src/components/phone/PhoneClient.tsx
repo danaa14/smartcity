@@ -80,7 +80,9 @@ export function PhoneClient() {
       const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: callerLines[0], lang: callLang }) });
       const a = (await r.json()) as Answer;
       const spoken =
-        a.status === "missing"
+        a.kind === "prose"
+          ? (a.unverified ? L({ ro: "Nu am acest lucru într-o sursă indexată, așa că vă rog să-l confirmați înainte de a acționa. ", ru: "Этого нет в индексированном источнике, поэтому подтвердите, прежде чем действовать. " }) : "") + (a.prose ?? "")
+          : a.status === "missing"
           ? L({ ro: "Nu am în surse informații verificate despre acest subiect și nu vreau să vă induc în eroare. Vă pot da numărul Ghișeului Unic al Primăriei: ", ru: "У меня нет проверенных сведений по этой теме, и я не хочу ввести вас в заблуждение. Могу дать номер Единого окна Примэрии: " }) +
             "+373 22 20 15 05. " +
             L({ ro: "Doriți să vă transfer la un operator? În această demonstrație transferul nu este implementat.", ru: "Соединить вас с оператором? В этой демонстрации перевод звонка не реализован." })

@@ -43,3 +43,9 @@ next-env.d.ts
 
 # local demo data (tickets, uploads, feedback, screenshots)
 /.data
+
+# Downloadable ML models — restore with `npm run whisper:models` / `npm run ocr:models`.
+# ggml-base.bin is 141 MB, over GitHub's 100 MB per-file limit.
+# (public/ocr and public/ort are NOT ignored: no script restores them and the browser needs them.)
+/ocr/whisper/*.bin
+/ocr/tessdata/

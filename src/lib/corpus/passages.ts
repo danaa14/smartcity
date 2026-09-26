@@ -1,3 +1,4 @@
+import annexIngest from "../../../corpus/annex-ingest.json";
 import type { Passage } from "./types";
 
 /**
@@ -461,5 +462,7 @@ export const PASSAGES: Passage[] = [
     unofficialTranslation: { ru: "[DEMO — ВЫМЫШЛЕННЫЙ ТЕКСТ] Заявки на сезонные террасы подаются не менее чем за 15 рабочих дней до открытия." },
   },
 ];
+
+PASSAGES.push(...(annexIngest.passages as Passage[]));
 
 export const PASSAGE_BY_ID = new Map(PASSAGES.map((p) => [p.id, p]));
