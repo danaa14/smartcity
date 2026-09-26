@@ -11,6 +11,14 @@ export const CATEGORIES: { id: CategoryId; label: L10n; icon: string; cues: stri
   { id: "other", label: { ro: "Altceva", ru: "Другое" }, icon: "•", cues: [] },
 ];
 
+export const SERVICES = [
+  { id: "city", symbol: "⌂", label: { ro: "Primărie", ru: "Примэрия" }, hint: { ro: "Străzi, trotuare, iluminat", ru: "Дороги, тротуары, освещение" } },
+  { id: "police", symbol: "◇", label: { ro: "Poliție", ru: "Полиция" }, hint: { ro: "Siguranță și ordine publică", ru: "Безопасность и порядок" } },
+  { id: "hospital", symbol: "+", label: { ro: "Spital", ru: "Больница" }, hint: { ro: "Servicii și acces medical", ru: "Медицинские услуги и доступ" } },
+  { id: "utilities", symbol: "≈", label: { ro: "Servicii comunale", ru: "Коммунальные службы" }, hint: { ro: "Apă, deșeuri, spații verzi", ru: "Вода, мусор, озеленение" } },
+] as const;
+export type ServiceId = typeof SERVICES[number]["id"];
+
 export type TicketEventKind = "created_local" | "reviewed_by_user" | "deleted_media" | "marked_done" | "reopened";
 
 export interface TicketMedia {
@@ -27,6 +35,11 @@ export interface Ticket {
   lang: "ro" | "ru";
   category: CategoryId;
   title?: string;
+  recipient?: import("./recipients").RecipientId;
+  links?: string[];
+  authorityProgress?: { receivedAt?: string; onWayAt?: string; resolvedAt?: string };
+  service?: ServiceId;
+  transcript?: string;
   city?: string;
   status?: "active" | "done";
   categorySuggested: CategoryId | null;

@@ -5,12 +5,14 @@ import * as inventory from "@/server/api/inventory";
 import * as ocr from "@/server/api/ocr";
 import * as ocrAnalyze from "@/server/api/ocr-analyze";
 import * as reportSuggest from "@/server/api/report-suggest";
+import * as reportAudio from "@/server/api/report-audio";
 import * as reportVideo from "@/server/api/report-video";
 import * as review from "@/server/api/review";
 import * as scanReview from "@/server/api/scan-review";
 import * as tickets from "@/server/api/tickets";
 import * as ticketsId from "@/server/api/tickets-id";
 import * as ticketsIdMediaFile from "@/server/api/tickets-id-media-file";
+import * as voice from "@/server/api/voice";
 
 export const runtime = "nodejs";
 // Single function serves every API route (Vercel Hobby caps functions at 12).
@@ -27,11 +29,15 @@ function pick(segments: string[], method: string): Handler | null {
     typeof fn === "function" ? (fn as Handler) : null;
   const [a, b, c, d] = segments;
   if (a === "ask" && !b) return method === "POST" ? call(ask.POST) : null;
+  if (a === "voice" && b === "ready" && !c) return method === "GET" ? call(voice.ready) : null;
+  if (a === "voice" && b === "token" && !c) return method === "POST" ? call(voice.token) : null;
+  if (a === "voice" && b === "search" && !c) return method === "POST" ? call(voice.search) : null;
   if (a === "feedback" && !b) return method === "POST" ? call(feedback.POST) : null;
   if (a === "inventory" && !b) return method === "GET" ? call(inventory.GET) : null;
   if (a === "ocr" && !b) return method === "POST" ? call(ocr.POST) : null;
   if (a === "ocr" && b === "analyze" && !c) return method === "POST" ? call(ocrAnalyze.POST) : null;
   if (a === "report" && b === "suggest" && !c) return method === "POST" ? call(reportSuggest.POST) : null;
+  if (a === "report" && b === "audio" && !c) return method === "POST" ? call(reportAudio.POST) : null;
   if (a === "report" && b === "video" && !c) return method === "POST" ? call(reportVideo.POST) : null;
   if (a === "review" && !b) return method === "PATCH" ? call(review.PATCH) : null;
   if (a === "scan" && b === "review" && !c) return method === "POST" ? call(scanReview.POST) : null;

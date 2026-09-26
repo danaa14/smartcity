@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { CATEGORIES, type CategoryId, type Ticket, type TicketMedia } from "@/lib/tickets/types";
-import { newTicketId, saveMedia, tickets } from "@/lib/tickets/repo";
+import { CATEGORIES, SERVICES, type ServiceId, type CategoryId, type Ticket, type TicketMedia } from "@/lib/tickets/types";
+import { newTicketId, saveMedia, validateMedia, tickets } from "@/lib/tickets/repo";
 import { getSubmissionAdapter } from "@/lib/tickets/adapter";
+import { RECIPIENTS, type RecipientId } from "@/lib/tickets/recipients";
 import { gpsFromExif } from "@/lib/tickets/exif";
 
 export const runtime = "nodejs";
@@ -14,19 +15,30 @@ export async function POST(req: Request) {
 
   const description = s("description").slice(0, 1000);
   const title = (s("title") || description).slice(0, 100);
+  const service = (s("service") || "city") as ServiceId;
+  const transcript = s("transcript").slice(0, 1000);
   const city = (s("city") || "Chișinău").slice(0, 80);
   const locationInput = s("location").slice(0, 300);
   const category = s("category") as CategoryId;
   const mediaFiles = form.getAll("media").filter((f): f is File => f instanceof File && f.size > 0);
-  const hasVideo = mediaFiles.some((f) => f.type.startsWith("video/"));
+  const recipient = s("recipient") || (service === "city" ? "city_hall" : service);
+  const links = s("links").split(/\n/).map(value => value.trim()).filter(Boolean);
+  const validLinks = links.length <= 5 && links.every(value => { try { return value.length <= 1000 && ["https:", "http:"].includes(new URL(value).protocol); } catch { return false; } });
   const errors: Record<string, string> = {};
-  if (description.length < 5 && !hasVideo) errors.description = "description_short";
+  if (!SERVICES.some(item => item.id === service)) errors.service = "invalid_service";
+  if (title.length < 3) errors.title = "title_short";
+  if (!RECIPIENTS.some(r => r.id === recipient)) errors.recipient = "invalid_recipient";
+  if (!validLinks) errors.links = "invalid_links";
+  if (mediaFiles.length > 4) errors.media = "too_many_files";
+  for (const file of mediaFiles) {
+    const issue = validateMedia(file); if (issue) errors.media = issue;
+  }
   if (!CAT_IDS.has(category)) errors.category = "category_missing";
   if (s("confirm") !== "yes") errors.confirm = "not_confirmed";
   const photoFile = mediaFiles.find((f) => f.type.startsWith("image/"));
   const photoGps = photoFile?.type === "image/jpeg" ? await photoFile.arrayBuffer().then(gpsFromExif).catch(() => null) : null;
   const location = locationInput || (photoGps ? `GPS ${photoGps.lat.toFixed(5)}, ${photoGps.lng.toFixed(5)}` : "");
-  if (location.length < 3) errors.location = "location_missing";
+
   if (Object.keys(errors).length) return NextResponse.json({ error: "validation", fields: errors }, { status: 422 });
 
   const id = newTicketId();
@@ -51,13 +63,17 @@ export async function POST(req: Request) {
     lang: s("lang") === "ru" ? "ru" : "ro",
     category,
     title,
+    service,
+    transcript,
+    recipient: recipient as RecipientId,
+    links,
     city,
     status: "active",
     categorySuggested: CAT_IDS.has(suggested) ? suggested : null,
     categoryChangedByUser: CAT_IDS.has(suggested) && suggested !== category,
     description,
     descriptionSuggested: s("descriptionSuggested") || null,
-    location: { text: location, ...(Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : {}), source: s("locationSource") === "device" ? "device" : photoGps || s("locationSource") === "photo" ? "photo" : "manual" },
+    location: { text: location, ...(Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat!) <= 90 && Math.abs(lng!) <= 180 ? { lat, lng } : {}), source: s("locationSource") === "device" ? "device" : photoGps || s("locationSource") === "photo" ? "photo" : "manual" },
     media,
     contactConsent: false,
     submission: { adapter: adapter.id, submitted: false, externalId: null, note: "" },

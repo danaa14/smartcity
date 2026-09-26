@@ -1,458 +1,127 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLang } from "../LangProvider";
-import { Notice } from "../ui";
-import { CATEGORIES, type CategoryId } from "@/lib/tickets/types";
-import { localDemoAdapter } from "@/lib/tickets/adapter";
+import { CATEGORIES, SERVICES, type CategoryId, type ServiceId, type Ticket } from "@/lib/tickets/types";
+import { ReportCamera } from "./ReportCamera";
+import { ReportMedia } from "./ReportMedia";
+import { ReportVoice } from "./ReportVoice";
 
-const DRAFT_KEY = "pefir_report_draft";
-type Step = 1 | 2 | 3;
+const DRAFT_KEY = "pefir_report_v2";
+interface Draft { title: string; service: ServiceId | ""; category: CategoryId; location: string; message: string; transcript: string; links: string; lat?: number; lng?: number; }
+const EMPTY: Draft = { title: "", service: "", category: "other", location: "", message: "", transcript: "", links: "" };
+type Summary = Pick<Ticket, "id" | "title" | "city" | "status" | "location" | "description" | "createdAt">;
+const ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm";
+const REPORT_SERVICES = SERVICES.filter(item => item.id !== "hospital");
 
-interface Draft {
-  text: string;
-  location: string;
-  lat?: number;
-  lng?: number;
-  locationSource: "manual" | "device";
-  category: CategoryId | "";
-  categorySuggested: CategoryId | "";
-  description: string;
-  descriptionSuggested: string;
-}
-const EMPTY: Draft = { text: "", location: "", locationSource: "manual", category: "", categorySuggested: "", description: "", descriptionSuggested: "" };
-
-function loadDraft(): Draft {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as Draft | null;
-    return parsed && (parsed.text || parsed.location) ? { ...EMPTY, ...parsed } : EMPTY;
-  } catch {
-    return EMPTY;
-  }
-}
-
-export function ReportClient() {
+export function ReportClient({ initialTickets = [] }: { initialTickets?: Summary[] }) {
   const { lang, t } = useLang();
   const router = useRouter();
-  const [step, setStep] = useState<Step>(1);
-  const [d, setD] = useState<Draft>(EMPTY);
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
   const [files, setFiles] = useState<File[]>([]);
   const [audio, setAudio] = useState<File | null>(null);
-  const [vid, setVid] = useState<{ busy: boolean; error: string; transcript: string; ai: boolean } | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sendAudio, setSendAudio] = useState(true);
+  const [mode, setMode] = useState<"text" | "voice" | "media" | "link" | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [geoState, setGeoState] = useState<"idle" | "asking" | "denied" | "ok">("idle");
-  const [confirm, setConfirm] = useState(false);
-  const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [geo, setGeo] = useState("");
   const [restored, setRestored] = useState(false);
-  const headRef = useRef<HTMLHeadingElement>(null);
-  const first = useRef(true);
   const loaded = useRef(false);
-
+  const submitting = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const patch = (value: Partial<Draft>) => setDraft(previous => ({ ...previous, ...value }));
   useEffect(() => {
-    // Restored after mount so server and client render the same initial markup.
-    const draft = loadDraft();
+    try {
+      const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      if (saved && typeof saved.title === "string" && (saved.title || saved.message || saved.transcript || saved.links || saved.location)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDraft({ ...EMPTY, ...saved }); setRestored(true);
+      }
+    } catch { /* Private browsing may disable draft storage. */ }
     loaded.current = true;
-    if (draft !== EMPTY) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setD(draft);
-      setRestored(true);
-    }
   }, []);
-
-  useEffect(() => {
-    if (!loaded.current) return;
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-    } catch {}
-  }, [d]);
-
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    headRef.current?.focus();
-  }, [step]);
-
-  const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
-
-  const goStep2 = async () => {
-    const e: Record<string, string> = {};
-    if (d.text.trim().length < 5 && !files.length && !audio)
-      e.text = t({ ro: "Descrieți problema în câteva cuvinte sau adăugați o fotografie/înregistrare.", ru: "Опишите проблему в нескольких словах или добавьте фото/запись." });
-    if (d.text.trim().length > 0 && d.text.trim().length < 5)
-      e.text = t({ ro: "Descrierea este prea scurtă — minimum 5 caractere.", ru: "Описание слишком короткое — минимум 5 символов." });
-    setErrors(e);
-    if (Object.keys(e).length) {
-      document.getElementById("rep-text")?.focus();
-      return;
-    }
-    const r = await fetch("/api/report/suggest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: d.text }) }).catch(() => null);
-    const j = r?.ok ? await r.json() : null;
-    const cat: CategoryId | "" = j?.category?.id ?? "";
-    set({
-      categorySuggested: cat,
-      category: d.category || cat,
-      descriptionSuggested: j?.description ?? d.text,
-      description: d.description || j?.description || d.text,
-    });
+  useEffect(() => { if (loaded.current) { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {} } }, [draft]);
+  useEffect(() => { if (step > 0) heading.current?.focus(); }, [step]);
+  function addFiles(incoming: File[]) {
+    if (incoming.some(file => file.size > 25 * 1024 * 1024)) { setError(t({ ro: "Fiecare fișier trebuie să aibă maximum 25 MB.", ru: "Каждый файл должен быть не больше 25 МБ." })); return false; }
+    if (incoming.some(file => !ACCEPT.split(",").includes(file.type))) { setError(t({ ro: "Alege o fotografie JPG, PNG, WEBP sau un video MP4, MOV, WEBM.", ru: "Выберите фото JPG, PNG, WEBP или видео MP4, MOV, WEBM." })); return false; }
+    if (files.length + incoming.length > 3) { setError(t({ ro: "Poți atașa maximum 3 fotografii sau videoclipuri.", ru: "Можно прикрепить до 3 фото или видео." })); return false; }
+    setFiles(previous => [...previous, ...incoming]); setError(""); return true;
+  }
+  const service = SERVICES.find(item => item.id === draft.service);
+  function review() {
+    setError("");
+    if (draft.title.trim().length < 3) { setError(t({ ro: "Dă-i problemei un titlu de cel puțin 3 caractere.", ru: "Добавьте название — хотя бы 3 символа." })); document.getElementById("report-title")?.focus(); return; }
+    if (!service) { setError(t({ ro: "Alege serviciul care ar putea ajuta.", ru: "Выберите службу, которая может помочь." })); document.getElementById("service-legend")?.focus(); return; }
+    const links = draft.links.split("\n").map(s => s.trim()).filter(Boolean);
+    if (links.length > 5 || links.some(link => { try { return link.length > 1000 || !["http:", "https:"].includes(new URL(link).protocol); } catch { return true; } })) { setError(t({ ro: "Adaugă până la 5 linkuri complete (https://…), câte unul pe rând.", ru: "Добавьте до 5 полных ссылок (https://…), по одной на строку." })); setMode("link"); return; }
     setStep(2);
-  };
-
-  const locate = () => {
-    if (!("geolocation" in navigator)) {
-      setGeoState("denied");
-      return;
-    }
-    setGeoState("asking");
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const lat = Math.round(p.coords.latitude * 1e5) / 1e5;
-        const lng = Math.round(p.coords.longitude * 1e5) / 1e5;
-        set({ lat, lng, locationSource: "device", location: d.location || `${lat}, ${lng}` });
-        setGeoState("ok");
-      },
-      () => setGeoState("denied"),
-      { timeout: 10000, maximumAge: 60000 },
-    );
-  };
-
-  const goStep3 = () => {
-    const e: Record<string, string> = {};
-    if (d.location.trim().length < 3) e.location = t({ ro: "Indicați locul: stradă și număr, intersecție sau un reper.", ru: "Укажите место: улица и номер, перекрёсток или ориентир." });
-    if (!d.category) e.category = t({ ro: "Alegeți o categorie.", ru: "Выберите категорию." });
-    if (d.description.trim().length < 5 && !hasVideo) e.description = t({ ro: "Descrierea trebuie să aibă cel puțin 5 caractere.", ru: "Описание должно быть не короче 5 символов." });
-    setErrors(e);
-    if (Object.keys(e).length) {
-      document.getElementById(e.location ? "rep-loc" : e.category ? "cat-legend" : "rep-desc")?.focus();
-      return;
-    }
-    setStep(3);
-  };
-
-  const submit = async () => {
-    if (!confirm) {
-      setErrors({ confirm: t({ ro: "Bifați confirmarea pentru a crea tichetul demo.", ru: "Отметьте подтверждение, чтобы создать демо-заявку." }) });
-      document.getElementById("rep-confirm")?.focus();
-      return;
-    }
-    setBusy(true);
-    setSubmitErr(null);
+  }
+  function locate() {
+    setGeo(t({ ro: "Căutăm locația…", ru: "Определяем местоположение…" }));
+    if (!navigator.geolocation) { setGeo(t({ ro: "Poți scrie adresa manual.", ru: "Можно ввести адрес вручную." })); return; }
+    navigator.geolocation.getCurrentPosition(position => {
+      const lat = Number(position.coords.latitude.toFixed(5)), lng = Number(position.coords.longitude.toFixed(5));
+      setDraft(previous => ({ ...previous, lat, lng, location: previous.location || `${lat}, ${lng}` }));
+      setGeo(t({ ro: "Locație adăugată. Verifică dacă este locul problemei.", ru: "Местоположение добавлено. Проверьте, совпадает ли оно с местом проблемы." }));
+    }, () => setGeo(t({ ro: "Locația nu este disponibilă. Poți scrie adresa manual.", ru: "Геолокация недоступна. Можно ввести адрес вручную." })), { timeout: 10000 });
+  }
+  async function submit() {
+    if (submitting.current) return;
+    submitting.current = true; setBusy(true); setError("");
     const fd = new FormData();
-    fd.append("description", d.description);
-    fd.append("location", d.location);
-    fd.append("category", d.category);
-    fd.append("categorySuggested", d.categorySuggested);
-    fd.append("descriptionSuggested", d.descriptionSuggested);
-    fd.append("locationSource", d.locationSource);
-    if (d.lat != null) fd.append("lat", String(d.lat));
-    if (d.lng != null) fd.append("lng", String(d.lng));
-    fd.append("lang", lang);
-    fd.append("confirm", "yes");
-    for (const f of files) fd.append("media", f);
-    if (audio) fd.append("media", audio);
+    for (const [key, value] of Object.entries({ title: draft.title, description: draft.message, transcript: draft.transcript, service: draft.service, category: draft.category, location: draft.location, links: draft.links, lang, confirm: "yes", locationSource: draft.lat != null ? "device" : "manual" })) fd.append(key, value);
+    if (draft.lat != null && draft.lng != null) { fd.append("lat", String(draft.lat)); fd.append("lng", String(draft.lng)); }
+    files.forEach(file => fd.append("media", file));
+    if (audio && sendAudio) fd.append("media", audio);
     try {
-      const r = await fetch("/api/tickets", { method: "POST", body: fd });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.reason ?? j.error);
-      localStorage.removeItem(DRAFT_KEY);
-      router.push(`/tichet/${j.id}?nou=1`);
-    } catch (e) {
-      const reason = (e as Error).message;
-      setSubmitErr(
-        reason === "too_large"
-          ? t({ ro: "Un fișier depășește 25 MB. Eliminați-l sau alegeți unul mai mic. Restul datelor au rămas salvate.", ru: "Файл больше 25 МБ. Удалите его или выберите меньший. Остальные данные сохранены." })
-          : reason === "unsupported_type"
-            ? t({ ro: "Un fișier are un format neacceptat. Eliminați-l și încercați din nou. Datele au rămas salvate.", ru: "У файла неподдерживаемый формат. Удалите его и попробуйте снова. Данные сохранены." })
-            : t({ ro: "Tichetul nu a putut fi creat. Ciorna este păstrată pe acest dispozitiv — încercați din nou.", ru: "Не удалось создать заявку. Черновик сохранён на этом устройстве — попробуйте ещё раз." }),
-      );
-      setBusy(false);
-    }
-  };
-
-  const stepLabels = [
-    { ro: "Ce s-a întâmplat", ru: "Что случилось" },
-    { ro: "Unde și ce tip", ru: "Где и какой тип" },
-    { ro: "Verificare și confirmare", ru: "Проверка и подтверждение" },
-  ];
-  const catLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label[lang] ?? "—";
-  const hasVideo = files.some((f) => f.type.startsWith("video/"));
-
-  const extractVideo = async () => {
-    const v = files.find((f) => f.type.startsWith("video/"));
-    if (!v || vid?.busy) return;
-    setVid({ busy: true, error: "", transcript: "", ai: false });
-    const fd = new FormData();
-    fd.append("file", v);
-    fd.append("lang", lang);
-    try {
-      const r = await fetch("/api/report/video", { method: "POST", body: fd });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      const patch: Partial<Draft> = { locationSource: j.lat != null ? "device" : undefined };
-      if (!d.description.trim()) patch.description = j.description;
-      if (!d.category) patch.category = j.category;
-      if (!d.location.trim()) patch.location = j.location;
-      if (d.lat == null && j.lat != null) { patch.lat = j.lat; patch.lng = j.lng; }
-      set(patch);
-      setVid({ busy: false, error: "", transcript: j.transcript ?? "", ai: !!j.ai });
-    } catch (e) {
-      const code = (e as Error).message;
-      const msg =
-        code === "whisper_missing"
-          ? t({ ro: "Transcrierea locală (whisper) nu este instalată pe acest calculator. Puteți scrie descrierea manual.", ru: "Локальное распознавание речи (whisper) не установлено на этом компьютере. Опишите проблему вручную." })
-          : code === "no_audio"
-            ? t({ ro: "Videoclipul nu are sunet. Adăugați descrierea manual.", ru: "В видео нет звука. Опишите проблему вручную." })
-            : t({ ro: "Analiza videoclipului nu a reușit. Scrieți descrierea manual.", ru: "Не удалось проанализировать видео. Опишите проблему вручную." });
-      setVid({ busy: false, error: msg, transcript: "", ai: false });
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t({ ro: "Raportează o problemă în oraș", ru: "Сообщить о проблеме в городе" })}</h1>
-        <p className="text-muted">{t({ ro: "Trei pași scurți. Nu vă cerem numele sau telefonul.", ru: "Три коротких шага. Мы не спрашиваем имя или телефон." })}</p>
-      </header>
-
-      <Notice tone="demo" title={t({ ro: "Tichet DEMO — nu se trimite Primăriei", ru: "DEMO-заявка — в Примэрию не отправляется" })}>
-        {t({ ro: "Prototipul salvează sesizarea doar local. Pentru o sesizare reală folosiți portalul oficial „Sesizează” de pe chisinau.md.", ru: "Прототип сохраняет обращение только локально. Для реального обращения используйте официальный портал «Sesizează» на chisinau.md." })}{" "}
-        <a href="https://www.chisinau.md/ro" target="_blank" rel="noopener noreferrer" className="link">chisinau.md ↗</a>
-      </Notice>
-
-      {restored && step === 1 && (
-        <Notice tone="info">
-          {t({ ro: "Am restabilit ciorna salvată pe acest dispozitiv. ", ru: "Восстановлен черновик, сохранённый на этом устройстве. " })}
-          <button type="button" className="link" onClick={() => { setD(EMPTY); setRestored(false); }}>{t({ ro: "Începeți de la zero", ru: "Начать заново" })}</button>
-        </Notice>
-      )}
-
-      <ol className="grid grid-cols-3 gap-1 text-xs sm:text-sm" aria-label={t({ ro: "Progres", ru: "Прогресс" })}>
-        {stepLabels.map((l, i) => {
-          const n = (i + 1) as Step;
-          const state = n < step ? "done" : n === step ? "current" : "todo";
-          return (
-            <li key={i} aria-current={state === "current" ? "step" : undefined} className={`rounded-lg border-b-4 bg-white px-2 py-2 font-semibold ${state === "current" ? "border-brand text-brand-dark" : state === "done" ? "border-ok text-ok" : "border-line text-muted"}`}>
-              <span aria-hidden="true">{state === "done" ? "✓ " : `${n}. `}</span>
-              <span className="sr-only">{t({ ro: "Pasul", ru: "Шаг" })} {n}{state === "done" ? t({ ro: " (finalizat)", ru: " (готово)" }) : ""}: </span>
-              {l[lang]}
-            </li>
-          );
-        })}
-      </ol>
-
-      <section className="card space-y-4 p-4 sm:p-5" aria-labelledby="step-h">
-        <h2 id="step-h" ref={headRef} tabIndex={-1} className="text-xl font-bold">
-          {t({ ro: "Pasul", ru: "Шаг" })} {step} {t({ ro: "din", ru: "из" })} 3: {stepLabels[step - 1][lang]}
-        </h2>
-
-        {step === 1 && (
-          <>
-            <div>
-              <label htmlFor="rep-text" className="field-label">{t({ ro: "Descrieți pe scurt problema", ru: "Кратко опишите проблему" })}</label>
-              <span id="rep-text-hint" className="field-hint">{t({ ro: "De exemplu: „Groapă mare pe trotuar lângă stația de autobuz”.", ru: "Например: «Большая яма на тротуаре у остановки»." })}</span>
-              <textarea id="rep-text" rows={3} maxLength={1000} value={d.text} onChange={(e) => set({ text: e.target.value })} aria-describedby={`rep-text-hint${errors.text ? " rep-text-err" : ""}`} aria-invalid={!!errors.text || undefined} className="input text-lg" />
-              {errors.text && <p id="rep-text-err" role="alert" className="mt-1 font-semibold text-bad">⚠ {errors.text}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="rep-media" className="field-label">{t({ ro: "Fotografie sau video (opțional)", ru: "Фото или видео (необязательно)" })}</label>
-              <span id="rep-media-hint" className="field-hint">{t({ ro: "JPG, PNG, WEBP, MP4, MOV — maximum 25 MB fiecare. Evitați fețele și numerele de înmatriculare.", ru: "JPG, PNG, WEBP, MP4, MOV — до 25 МБ каждый. Избегайте лиц и номеров машин." })}</span>
-              <input id="rep-media" type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" aria-describedby="rep-media-hint" onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 3))} className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-lg file:border file:border-brand file:bg-white file:px-4 file:font-semibold file:text-brand" />
-              {files.length > 0 && (
-                <ul className="mt-2 flex flex-wrap gap-2">
-                  {files.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 rounded border border-line bg-paper p-1 pr-2 text-sm">
-                      {f.type.startsWith("image/") ? <img src={URL.createObjectURL(f)} alt="" className="h-12 w-12 rounded object-cover" /> : <span aria-hidden="true" className="grid h-12 w-12 place-items-center">🎞</span>}
-                      <span className="max-w-40 truncate">{f.name}</span>
-                      <button type="button" className="btn-quiet rounded px-1" onClick={() => setFiles(files.filter((_, j) => j !== i))} aria-label={`${t({ ro: "Elimină", ru: "Удалить" })} ${f.name}`}>✕</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {hasVideo && !vid?.busy && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn btn-secondary min-h-10 text-sm" onClick={extractVideo}>
-                    <span aria-hidden="true">🤖</span> {t({ ro: "Extrage locația + descrierea din videoclip", ru: "Извлечь место и описание из видео" })}
-                  </button>
-                  <span className="text-xs text-muted">{t({ ro: "Transcrierea rulează local (whisper); rezumatul poate folosi modelul AI configurat, altfel reguli de cuvinte cheie. Verificați tot ce se completează.", ru: "Распознавание речи выполняется локально (whisper); сводку может составить настроенная ИИ-модель или правила ключевых слов. Проверяйте заполненное." })}</span>
-                </div>
-              )}
-              {vid?.busy && <p className="text-sm text-muted">⏳ {t({ ro: "Se analizează videoclipul: audio, transcriere, rezumat…", ru: "Анализ видео: аудио, распознавание, сводка…" })}</p>}
-              {vid?.error && <p role="alert" className="text-sm font-semibold text-bad">⚠ {vid.error}</p>}
-              {vid?.transcript && (
-                <details className="rounded-lg border border-line bg-paper p-2 text-sm">
-                  <summary className="cursor-pointer font-semibold">{t({ ro: "Transcrierea audio", ru: "Расшифровка аудио" })}{vid.ai ? t({ ro: " · rezumat cu AI", ru: " · сводка с ИИ" }) : ""}</summary>
-                  <p className="mt-1 whitespace-pre-wrap text-muted">{vid.transcript}</p>
-                </details>
-              )}
-            </div>
-
-            <VoiceRecorder audio={audio} setAudio={setAudio} />
-
-            <div className="flex justify-end">
-              <button type="button" className="btn btn-primary min-w-40" onClick={goStep2}>{t({ ro: "Continuă", ru: "Далее" })} →</button>
-            </div>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <div>
-              <label htmlFor="rep-loc" className="field-label">{t({ ro: "Unde este problema?", ru: "Где проблема?" })}</label>
-              <span id="rep-loc-hint" className="field-hint">{t({ ro: "Stradă și număr, intersecție sau reper. Puteți folosi și locația dispozitivului — o vedeți și o confirmați înainte de trimitere.", ru: "Улица и номер, перекрёсток или ориентир. Можно использовать геолокацию — вы увидите и подтвердите её перед отправкой." })}</span>
-              <input id="rep-loc" value={d.location} maxLength={300} onChange={(e) => set({ location: e.target.value, locationSource: d.lat ? d.locationSource : "manual" })} aria-describedby={`rep-loc-hint${errors.location ? " rep-loc-err" : ""}`} aria-invalid={!!errors.location || undefined} className="input" autoComplete="street-address" />
-              {errors.location && <p id="rep-loc-err" role="alert" className="mt-1 font-semibold text-bad">⚠ {errors.location}</p>}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button type="button" className="btn btn-secondary min-h-10 text-sm" onClick={locate} disabled={geoState === "asking"}>
-                  <span aria-hidden="true">⌖</span> {geoState === "asking" ? t({ ro: "Se determină…", ru: "Определяется…" }) : t({ ro: "Propune locația mea", ru: "Предложить моё местоположение" })}
-                </button>
-                <p aria-live="polite" className="text-sm">
-                  {geoState === "ok" && d.lat != null && (
-                    <span className="text-ok">✓ {t({ ro: "Coordonate propuse:", ru: "Предложенные координаты:" })} {d.lat}, {d.lng} — {t({ ro: "verificați și adăugați strada în câmp.", ru: "проверьте и добавьте улицу в поле." })}{" "}
-                      <button type="button" className="link" onClick={() => { set({ lat: undefined, lng: undefined, locationSource: "manual" }); setGeoState("idle"); }}>{t({ ro: "Nu folosi coordonatele", ru: "Не использовать координаты" })}</button>
-                    </span>
-                  )}
-                  {geoState === "denied" && <span className="text-warn">{t({ ro: "Locația nu este disponibilă. Scrieți adresa manual.", ru: "Геолокация недоступна. Введите адрес вручную." })}</span>}
-                </p>
-              </div>
-            </div>
-
-            <fieldset aria-describedby={errors.category ? "cat-err" : "cat-hint"}>
-              <legend id="cat-legend" tabIndex={-1} className="field-label">{t({ ro: "Categoria", ru: "Категория" })}</legend>
-              <span id="cat-hint" className="field-hint">
-                {d.categorySuggested
-                  ? t({ ro: `Sugestie automată după cuvintele din descriere: „${catLabel(d.categorySuggested)}”. Verificați și schimbați dacă e greșit.`, ru: `Автоматическая подсказка по словам описания: «${catLabel(d.categorySuggested)}». Проверьте и измените при ошибке.` })
-                  : t({ ro: "Nu am putut propune o categorie — alegeți una.", ru: "Не удалось предложить категорию — выберите сами." })}{" "}
-                {t({ ro: "Categoriile sunt ale prototipului, nu departamente oficiale.", ru: "Категории — прототипа, а не официальные отделы." })}
-              </span>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {CATEGORIES.map((c) => (
-                  <label key={c.id} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border p-2.5 ${d.category === c.id ? "border-brand bg-brand-soft" : "border-line"}`}>
-                    <input type="radio" name="cat" value={c.id} checked={d.category === c.id} onChange={() => set({ category: c.id })} className="h-5 w-5" />
-                    <span aria-hidden="true">{c.icon}</span>
-                    <span className="font-medium">{c.label[lang]}</span>
-                    {d.categorySuggested === c.id && <span className="ml-auto rounded bg-white px-1.5 text-xs text-brand">{t({ ro: "sugerat", ru: "предложено" })}</span>}
-                  </label>
-                ))}
-              </div>
-              {errors.category && <p id="cat-err" role="alert" className="mt-1 font-semibold text-bad">⚠ {errors.category}</p>}
-            </fieldset>
-
-            <div>
-              <label htmlFor="rep-desc" className="field-label">{t({ ro: "Descrierea care va fi salvată", ru: "Описание, которое будет сохранено" })}</label>
-              <span id="rep-desc-hint" className="field-hint">{t({ ro: "Am ordonat textul dvs. fără să adăugăm informații. Corectați dacă e nevoie.", ru: "Мы упорядочили ваш текст, ничего не добавляя. Исправьте при необходимости." })}</span>
-              <textarea id="rep-desc" rows={3} maxLength={1000} value={d.description} onChange={(e) => set({ description: e.target.value })} aria-describedby={`rep-desc-hint${errors.description ? " rep-desc-err" : ""}`} aria-invalid={!!errors.description || undefined} className="input" />
-              {errors.description && <p id="rep-desc-err" role="alert" className="mt-1 font-semibold text-bad">⚠ {errors.description}</p>}
-            </div>
-
-            <div className="flex justify-between gap-2">
-              <button type="button" className="btn btn-quiet" onClick={() => setStep(1)}>← {t({ ro: "Înapoi", ru: "Назад" })}</button>
-              <button type="button" className="btn btn-primary min-w-40" onClick={goStep3}>{t({ ro: "Verifică", ru: "Проверить" })} →</button>
-            </div>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <dl className="divide-y divide-line rounded-lg border border-line">
-              {[
-                [t({ ro: "Categoria", ru: "Категория" }), catLabel(d.category) + (d.categorySuggested && d.categorySuggested !== d.category ? t({ ro: " (schimbată de dvs.)", ru: " (изменено вами)" }) : "")],
-                [t({ ro: "Locul", ru: "Место" }), d.location + (d.lat != null ? ` · GPS ${d.lat}, ${d.lng}` : "")],
-                [t({ ro: "Descrierea", ru: "Описание" }), d.description],
-                [t({ ro: "Fișiere", ru: "Файлы" }), [...files.map((f) => f.name), ...(audio ? [t({ ro: "înregistrare vocală", ru: "голосовая запись" })] : [])].join(", ") || "—"],
-                [t({ ro: "Date personale", ru: "Личные данные" }), t({ ro: "Niciuna (nume, telefon, e-mail nu sunt cerute)", ru: "Нет (имя, телефон, e-mail не запрашиваются)" })],
-              ].map(([k, v]) => (
-                <div key={k} className="grid gap-1 p-3 sm:grid-cols-[10rem_1fr]">
-                  <dt className="font-semibold">{k}</dt>
-                  <dd className="break-words">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <Notice tone="warn" title={t({ ro: "Ce se întâmplă cu datele", ru: "Что происходит с данными" })}>
-              <p>{localDemoAdapter.destination[lang]}</p>
-              <p className="mt-1">{t({ ro: "Niciun serviciu extern (AI, stocare, hărți) nu primește textul, fotografiile sau înregistrarea. Puteți șterge tichetul oricând de pe pagina lui.", ru: "Никакой внешний сервис (ИИ, хранилище, карты) не получает текст, фото или запись. Заявку можно удалить в любой момент на её странице." })}</p>
-            </Notice>
-            <div>
-              <label className="flex min-h-11 items-start gap-3">
-                <input id="rep-confirm" type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} aria-invalid={!!errors.confirm || undefined} aria-describedby={errors.confirm ? "rep-confirm-err" : undefined} className="mt-1 h-5 w-5" />
-                <span>{t({ ro: "Am verificat detaliile și înțeleg că este un tichet DEMO, salvat local, care NU ajunge la Primărie.", ru: "Я проверил(а) данные и понимаю, что это DEMO-заявка, сохранённая локально, которая НЕ попадает в Примэрию." })}</span>
-              </label>
-              {errors.confirm && <p id="rep-confirm-err" role="alert" className="mt-1 font-semibold text-bad">⚠ {errors.confirm}</p>}
-            </div>
-            {submitErr && <p role="alert" className="font-semibold text-bad">⚠ {submitErr}</p>}
-            <div className="flex justify-between gap-2">
-              <button type="button" className="btn btn-quiet" onClick={() => setStep(2)}>← {t({ ro: "Modifică", ru: "Изменить" })}</button>
-              <button type="button" className="btn btn-primary min-w-48" onClick={submit} disabled={busy}>
-                {busy ? t({ ro: "Se creează…", ru: "Создаётся…" }) : t({ ro: "Creează tichetul demo", ru: "Создать демо-заявку" })}
-              </button>
-            </div>
-          </>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function VoiceRecorder({ audio, setAudio }: { audio: File | null; setAudio: (f: File | null) => void }) {
-  const { t } = useLang();
-  const [rec, setRec] = useState<MediaRecorder | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [secs, setSecs] = useState(0);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const start = async () => {
-    setErr(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      mr.ondataavailable = (e) => chunks.push(e.data);
-      mr.onstop = () => {
-        stream.getTracks().forEach((tr) => tr.stop());
-        const type = (mr.mimeType || "audio/webm").split(";")[0];
-        setAudio(new File(chunks, `voce.${type.split("/")[1]}`, { type }));
-        if (timer.current) clearInterval(timer.current);
-      };
-      mr.start();
-      setRec(mr);
-      setSecs(0);
-      timer.current = setInterval(() => setSecs((s) => (s >= 119 ? (mr.stop(), setRec(null), 120) : s + 1)), 1000);
+      const response = await fetch("/api/tickets", { method: "POST", body: fd });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.reason || result.error);
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      router.push(`/tichet/${result.id}?nou=1`);
     } catch {
-      setErr(t({ ro: "Microfonul nu este disponibil sau accesul a fost refuzat. Puteți încărca un fișier audio sau scrie textul.", ru: "Микрофон недоступен или доступ запрещён. Можно загрузить аудиофайл или написать текст." }));
+      submitting.current = false; setBusy(false);
+      setError(t({ ro: "Nu am putut salva sesizarea. Datele tale sunt încă aici — încearcă din nou.", ru: "Не удалось сохранить обращение. Ваши данные на месте — попробуйте снова." }));
     }
-  };
-
-  return (
-    <div>
-      <p className="field-label" id="voice-l">{t({ ro: "Mesaj vocal (opțional)", ru: "Голосовое сообщение (необязательно)" })}</p>
-      <span className="field-hint">{t({ ro: "Înregistrarea este atașată tichetului local. Nu este transcrisă automat în acest prototip — scrieți și câteva cuvinte mai sus.", ru: "Запись прикрепляется к локальной заявке. В этом прототипе она не расшифровывается автоматически — напишите пару слов выше." })}</span>
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby="voice-l">
-        {!rec ? (
-          <button type="button" className="btn btn-secondary min-h-10 text-sm" onClick={start}>
-            <span aria-hidden="true">●</span> {audio ? t({ ro: "Înregistrează din nou", ru: "Записать заново" }) : t({ ro: "Înregistrează", ru: "Записать" })}
-          </button>
-        ) : (
-          <button type="button" className="btn min-h-10 bg-bad text-sm text-white" onClick={() => { rec.stop(); setRec(null); }}>
-            <span aria-hidden="true">■</span> {t({ ro: "Oprește", ru: "Стоп" })} ({secs}s)
-          </button>
-        )}
-        <label className="btn btn-quiet min-h-10 cursor-pointer text-sm">
-          {t({ ro: "sau încarcă audio", ru: "или загрузить аудио" })}
-          <input type="file" accept="audio/*" className="sr-only" onChange={(e) => setAudio(e.target.files?.[0] ?? null)} />
-        </label>
-        <span aria-live="polite" className="sr-only">{rec ? t({ ro: "Înregistrare pornită", ru: "Запись идёт" }) : audio ? t({ ro: "Înregistrare atașată", ru: "Запись прикреплена" }) : ""}</span>
-      </div>
-      {audio && !rec && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <audio controls src={URL.createObjectURL(audio)} className="h-10 max-w-full" />
-          <button type="button" className="btn btn-quiet min-h-9 text-sm" onClick={() => setAudio(null)}>{t({ ro: "Elimină", ru: "Удалить" })}</button>
+  }
+  return <div className="report-flow">
+    <header className="report-intro"><h1>{t({ ro: "Ai observat ceva?", ru: "Заметили проблему?" })}<br /><span>{t({ ro: "Dă-ne de veste.", ru: "Дайте нам знать." })}</span></h1></header>
+    <section className="report-surface" aria-labelledby="report-step-title">
+      <div className="report-section-head"><div><h2 id="report-step-title" tabIndex={-1} ref={heading}>{step === 0 ? t({ ro: "Totul începe cu o imagine", ru: "Начнём с фотографии" }) : step === 1 ? t({ ro: "Ce putem îmbunătăți?", ru: "Что можно улучшить?" }) : t({ ro: "Arată bine? Trimite mai departe.", ru: "Всё верно? Можно отправлять." })}</h2></div></div>
+      {error && <p className="report-error" role="alert">{error}</p>}
+      {step === 0 && <ReportCamera onPhoto={file => { if (addFiles([file])) setStep(1); }} />}
+      {step === 1 && <div className="report-details">
+        {restored && <div className="report-note">{t({ ro: "Am păstrat textul ciornei tale. Atașamentele trebuie adăugate din nou.", ru: "Текст черновика сохранён. Вложения нужно добавить заново." })}<button type="button" className="report-text-button" onClick={() => { setDraft(EMPTY); setFiles([]); setAudio(null); setRestored(false); }}>{t({ ro: "Începe de la zero", ru: "Начать заново" })}</button></div>}
+        {files.length > 0 && <div className="report-attachments">{files.map((file, index) => <div className="report-attachment" key={`${file.name}-${index}`}><ReportMedia file={file} /><button type="button" onClick={() => setFiles(previous => previous.filter((_, i) => i !== index))} aria-label={`${t({ ro: "Elimină", ru: "Удалить" })} ${file.name}`}>×</button></div>)}</div>}
+        <div><label className="report-label" htmlFor="report-title">{t({ ro: "Un titlu scurt este suficient", ru: "Достаточно короткого названия" })} <span>*</span></label><input id="report-title" className="report-input report-title-input" value={draft.title} maxLength={100} onChange={e => patch({ title: e.target.value })} placeholder={t({ ro: "De exemplu: Un felinar nu se aprinde", ru: "Например: Не горит фонарь" })} /><p className="report-muted">{t({ ro: "Fără formulare complicate. Spune-ne doar ce ai observat.", ru: "Без сложных форм. Просто расскажите, что заметили." })}</p></div>
+        <fieldset><legend className="report-label" id="service-legend" tabIndex={-1}>{t({ ro: "Cine te poate ajuta?", ru: "Кто может помочь?" })} <span>*</span></legend><div className="service-grid">{REPORT_SERVICES.map(item => <label key={item.id} className={`service-option ${draft.service === item.id ? "selected" : ""}`}><input type="radio" name="service" value={item.id} checked={draft.service === item.id} onChange={() => patch({ service: item.id })} /><span className="service-symbol" aria-hidden="true">{item.symbol}</span><span><strong>{item.label[lang]}</strong><small>{item.hint[lang]}</small></span><span className="service-check" aria-hidden="true">{draft.service === item.id ? "✓" : ""}</span></label>)}</div></fieldset>
+        <div className="report-location-row"><div><label className="report-label" htmlFor="report-category">{t({ ro: "Tipul problemei", ru: "Тип проблемы" })}</label><select id="report-category" className="report-input" value={draft.category} onChange={e => patch({ category: e.target.value as CategoryId })}>{CATEGORIES.map(item => <option key={item.id} value={item.id}>{item.label[lang]}</option>)}</select></div><div><label className="report-label" htmlFor="report-location">{t({ ro: "Unde ai observat-o?", ru: "Где вы её заметили?" })} <small>{t({ ro: "opțional", ru: "необязательно" })}</small></label><input id="report-location" className="report-input" maxLength={300} value={draft.location} onChange={e => patch({ location: e.target.value, lat: undefined, lng: undefined })} placeholder={t({ ro: "Strada sau un reper", ru: "Улица или ориентир" })} /><button type="button" className="report-text-button" onClick={locate}>⌖ {t({ ro: "Folosește locația mea", ru: "Моё местоположение" })}</button></div></div>
+        {geo && <p role="status" className="report-muted">{geo}</p>}
+        <div className="report-extras"><div className="report-extras-heading"><h3>{t({ ro: "Mai ai ceva de adăugat?", ru: "Хотите что-то добавить?" })}</h3><span>{t({ ro: "Doar dacă vrei", ru: "По желанию" })}</span></div><div className="report-modes">{([
+          ["text", "✎", t({ ro: "Mesaj", ru: "Текст" })], ["voice", "◉", t({ ro: "Vocal", ru: "Голос" })], ["media", "▧", t({ ro: "Foto / video", ru: "Фото / видео" })], ["link", "↗", t({ ro: "Link", ru: "Ссылка" })],
+        ] as const).map(([key, symbol, label]) => <button key={key} type="button" disabled={voiceBusy} aria-pressed={mode === key} onClick={() => setMode(mode === key ? null : key)}><span aria-hidden="true">{symbol}</span>{label}</button>)}</div>
+        {mode === "text" && <div className="report-extra-panel"><label className="report-label" htmlFor="report-message">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label><textarea id="report-message" className="report-input" rows={3} maxLength={1000} value={draft.message} onChange={e => patch({ message: e.target.value })} placeholder={t({ ro: "Adaugă detaliile care ar putea ajuta…", ru: "Добавьте полезные подробности…" })} /></div>}
+        {mode === "voice" && <ReportVoice audio={audio} onAudio={setAudio} transcript={draft.transcript} onTranscript={text => patch({ transcript: text })} onBusy={setVoiceBusy} />}
+        {mode === "media" && <label className="report-upload">▧ <strong>{t({ ro: "Adaugă fotografii sau videoclipuri", ru: "Добавить фото или видео" })}</strong><span>{t({ ro: "Până la 3 fișiere · maximum 25 MB fiecare", ru: "До 3 файлов · максимум 25 МБ каждый" })}</span><input type="file" multiple accept={ACCEPT} onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ""; }} /></label>}
+        {mode === "link" && <div className="report-extra-panel"><label className="report-label" htmlFor="report-links">{t({ ro: "Linkuri către fotografii sau videoclipuri", ru: "Ссылки на фото или видео" })}</label><textarea id="report-links" className="report-input" rows={2} maxLength={10000} value={draft.links} onChange={e => patch({ links: e.target.value })} placeholder="https://…" /><p className="report-muted">{t({ ro: "Câte un link pe rând. Asigură-te că poate fi deschis de destinatar.", ru: "По одной ссылке на строку. Убедитесь, что получатель сможет её открыть." })}</p></div>}
         </div>
-      )}
-      {err && <p role="alert" className="mt-1 text-sm text-bad">⚠ {err}</p>}
-    </div>
-  );
+        <div className="report-actions"><button type="button" className="report-text-button" disabled={voiceBusy} onClick={() => { setStep(0); setError(""); }}>← {t({ ro: "Înapoi la cameră", ru: "Назад к камере" })}</button><button type="button" className="report-primary" disabled={voiceBusy} onClick={review}>{t({ ro: "Mai departe", ru: "Далее" })} <span>→</span></button></div>
+      </div>}
+      {step === 2 && <div className="report-details"><div className="report-review"><span className="review-check" aria-hidden="true">✓</span><p className="report-eyebrow">{t({ ro: "SESIZAREA TA", ru: "ВАШЕ ОБРАЩЕНИЕ" })}</p><h3>{draft.title}</h3><p>{service?.label[lang]} · {CATEGORIES.find(item => item.id === draft.category)?.label[lang]}</p>{draft.location && <p>⌖ {draft.location}</p>}</div>
+        {files.length > 0 && <div className="report-attachments">{files.map((file, i) => <div className="report-attachment" key={i}><ReportMedia file={file} /></div>)}</div>}
+        {draft.message && <p className="report-message">{draft.message}</p>}
+        {draft.transcript && <div><p className="report-label">{t({ ro: "Mesaj vocal transcris", ru: "Расшифровка сообщения" })}</p><p className="report-message">{draft.transcript}</p></div>}
+        {audio && <div className="voice-preview"><ReportMedia file={audio} /><label className="report-audio-choice"><input type="checkbox" checked={sendAudio} onChange={e => setSendAudio(e.target.checked)} />{t({ ro: "Atașează și înregistrarea vocală", ru: "Прикрепить и голосовую запись" })}</label></div>}
+        {draft.links.trim() && <div className="report-links">{draft.links.split("\n").filter(s => s.trim()).map((link, i) => <a key={i} href={link.trim()} target="_blank" rel="noopener noreferrer">↗ {link}</a>)}</div>}
+        <div className="report-note"><strong>{t({ ro: "Totul este pregătit pentru tichetul demo.", ru: "Всё готово для демо-заявки." })}</strong><p>{t({ ro: "Se salvează aici, fără a fi trimis unei instituții. După trimitere vei putea vedea starea și pașii următori.", ru: "Она сохранится здесь и не будет отправлена в учреждение. После отправки вы увидите статус и следующие этапы." })}</p></div>
+        <div className="report-actions"><button type="button" className="report-text-button" disabled={busy} onClick={() => { setStep(1); setError(""); }}>← {t({ ro: "Mai schimb ceva", ru: "Изменить детали" })}</button><button type="button" className="report-primary" disabled={busy} onClick={() => void submit()}>{busy ? t({ ro: "Se salvează…", ru: "Сохраняем…" }) : t({ ro: "Trimite sesizarea demo", ru: "Отправить демо-заявку" })}<span>↗</span></button></div>
+      </div>}
+    </section>
+    {initialTickets.length > 0 && <details className="report-history"><summary>{t({ ro: "Sesizări recente", ru: "Последние обращения" })} <span>{initialTickets.length}</span></summary>{initialTickets.slice(0, 8).map(ticket => <Link href={`/tichet/${ticket.id}`} key={ticket.id}><span>{ticket.title || ticket.description || ticket.id}</span><span>↗</span></Link>)}</details>}
+  </div>;
 }

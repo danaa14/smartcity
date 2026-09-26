@@ -4,7 +4,7 @@ import { deleteTicket, tickets } from "@/lib/tickets/repo";
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const t = await tickets.get(id);
-  return t ? NextResponse.json(t) : NextResponse.json({ error: "not_found" }, { status: 404 });
+  return t ? NextResponse.json(t, { headers: { "Cache-Control": "no-store" } }) : NextResponse.json({ error: "not_found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

@@ -67,7 +67,7 @@ export function SourcePanel({ answer, sel, question, onClose, panelId = "source-
 
       <div className="rounded-lg bg-paper p-3">
         <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">
-          {t({ ro: "Textul original", ru: "Оригинальный текст" })} ({p.lang === "ro" ? "română" : "русский"}) — {t({ ro: "fragmentul evidențiat susține afirmația", ru: "выделенный фрагмент подтверждает утверждение" })}
+          {t({ ro: "Textul original", ru: "Оригинальный текст" })} ({p.lang === "ro" ? "română" : p.lang === "ru" ? "русский" : "English"}) — {t({ ro: "fragmentul evidențiat susține afirmația", ru: "выделенный фрагмент подтверждает утверждение" })}
         </p>
         <blockquote lang={p.lang} className="border-l-4 border-[#d9b400] pl-3">
           <Highlight text={p.text} quote={sel.quote} />
@@ -82,14 +82,6 @@ export function SourcePanel({ answer, sel, question, onClose, panelId = "source-
           <p lang={lang} className="text-sm">{translation}</p>
         </div>
       )}
-
-      <p className={`flex gap-1.5 text-sm ${d.status === "declared_in_force" ? "text-ok" : d.kind === "demo" ? "text-demo" : "text-warn"}`}>
-        <span aria-hidden="true">{d.status === "declared_in_force" ? "✓" : d.kind === "demo" ? "◇" : "?"}</span>
-        <span>
-          <span className="font-semibold">{t({ ro: "Valabilitate: ", ru: "Действительность: " })}</span>
-          {d.statusNote[lang]}
-        </span>
-      </p>
 
       <div className="flex flex-wrap gap-2">
         {d.url ? (

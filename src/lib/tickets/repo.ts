@@ -20,6 +20,12 @@ const ALLOWED: Record<string, TicketMedia["kind"]> = {
 };
 export const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
+export function validateMedia(file: File): string | null {
+  if (!ALLOWED[file.type.split(";")[0]]) return "unsupported_type";
+  if (file.size > MAX_MEDIA_BYTES) return "too_large";
+  return null;
+}
+
 export async function saveMedia(ticketId: string, file: File): Promise<TicketMedia | { error: string }> {
   const mime = file.type.split(";")[0];
   const kind = ALLOWED[mime];

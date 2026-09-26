@@ -13,6 +13,8 @@
     "test:docchat": "node scripts/doc-chat-check.mjs",
     "probe:annex": "python3 scripts/probe_annex.py",
     "ingest:annex": "node scripts/ingest-annex.mjs",
+    "ingest:voice-annex": "node scripts/ingest-voice-annex.mjs",
+    "test:voice": "node --import tsx scripts/test-voice-retrieval.mjs",
     "ocr:models": "bash scripts/get-ocr-models.sh",
     "whisper:models": "bash scripts/get-whisper-models.sh"
   },

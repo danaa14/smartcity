@@ -8,6 +8,7 @@ import { DocumentTurn, type DocContext } from "./DocumentTurn";
 import type { Answer } from "@/lib/answer/types";
 import { AnswerView } from "../ask/AnswerView";
 import { EXAMPLES } from "@/lib/corpus/examples";
+import { VoiceCall } from "./VoiceCall";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
 type DocTurn = { kind: "doc"; id: number; file: File; goal: string; ctx?: DocContext };
@@ -39,6 +40,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<Sheet>("faq");
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [validation, setValidation] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [fileErr, setFileErr] = useState(false);
@@ -167,6 +169,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
   const openSheet = (value: Sheet, trigger: HTMLElement) => {
     lastTrigger.current = trigger;
     setSheet(value);
+    setVoiceDialogOpen(value === "call");
     dialog.current?.showModal();
   };
 
@@ -210,7 +213,7 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
       </div>
 
       <div className="chat-dock">
-        {!turns.length && <div className="call-prompt"><span>{t({ ro: "Preferi să vorbești cu cineva?", ru: "Хотите поговорить с человеком?" })}</span><button type="button" className="call-button" onClick={(e) => openSheet("call", e.currentTarget)}><Icon name="phone" />{t({ ro: "Sună", ru: "Позвонить" })}</button></div>}
+        <div className="call-prompt"><span>{t({ ro: "Vorbești mai ușor decât scrii?", ru: "Вам удобнее говорить?" })}</span><button type="button" className="call-button" onClick={(e) => openSheet("call", e.currentTarget)}><Icon name="phone" />{t({ ro: "Sună", ru: "Позвонить" })}</button></div>
         <div className="faq-bar">
           <button type="button" className="faq-heading" onClick={(e) => openSheet("faq", e.currentTarget)}><Icon name="help" />{t({ ro: "Întrebări frecvente", ru: "Частые вопросы" })}<Icon name="chevron" /></button>
           <div className="question-shortcuts">
@@ -230,13 +233,13 @@ export function ChatClient({ initialQuestion = "" }: { initialQuestion?: string 
         <p className="sr-only" role="status">{busy ? t({ ro: "Se caută răspunsul.", ru: "Идёт поиск ответа." }) : settled(turns.at(-1)) ? t({ ro: "Răspunsul este gata.", ru: "Ответ готов." }) : ""}</p>
       </div>
 
-      <dialog ref={dialog} className="utility-sheet" aria-labelledby="sheet-title" onClose={() => lastTrigger.current?.focus()} onClick={(e) => { if (e.target === e.currentTarget) dialog.current?.close(); }}>
+      <dialog ref={dialog} className="utility-sheet" aria-labelledby="sheet-title" onClose={() => { lastTrigger.current?.focus(); setVoiceDialogOpen(false); }} onClick={(e) => { if (e.target === e.currentTarget) dialog.current?.close(); }}>
         <div className="sheet-inner">
           <div className="sheet-handle" aria-hidden="true" />
-          <header className="sheet-header"><h2 id="sheet-title">{sheet === "faq" ? t({ ro: "Bine de știut", ru: "Полезно знать" }) : sheet === "call" ? t({ ro: "Vorbim la telefon?", ru: "Поговорим по телефону?" }) : t({ ro: "Cu ce începem?", ru: "С чего начнём?" })}</h2><button type="button" className="sheet-close" aria-label={t({ ro: "Închide", ru: "Закрыть" })} onClick={() => dialog.current?.close()}><Icon name="close" /></button></header>
+          <header className="sheet-header"><h2 id="sheet-title">{sheet === "faq" ? t({ ro: "Bine de știut", ru: "Полезно знать" }) : sheet === "call" ? t({ ro: "Asistent vocal", ru: "Голосовой помощник" }) : t({ ro: "Cu ce începem?", ru: "С чего начнём?" })}</h2><button type="button" className="sheet-close" aria-label={t({ ro: "Închide", ru: "Закрыть" })} onClick={() => dialog.current?.close()}><Icon name="close" /></button></header>
           {sheet === "faq" && <div className="faq-list">{FAQ.map((item) => <details key={item.q.ro}><summary>{t(item.q)}<Icon name="plus" /></summary><p>{t(item.a)}</p></details>)}<Link href="/surse" className="sheet-text-link">{t({ ro: "Explorează sursele", ru: "Посмотреть источники" })} ↗</Link></div>}
-          {sheet === "call" && <div className="contact-content"><span className="contact-icon"><Icon name="phone" /></span><h3>{t({ ro: "Ghișeul Unic al Primăriei", ru: "Единое окно примэрии" })}</h3><p>{t({ ro: "Pentru întrebări despre serviciile municipale.", ru: "По вопросам муниципальных услуг." })}</p><a className="contact-number" href="tel:+37322201505">+373 22 20 15 05</a><p>{t({ ro: "Luni–vineri · 09:00–16:00\nPauză · 12:00–13:00", ru: "Пн–пт · 09:00–16:00\nПерерыв · 12:00–13:00" })}</p><a className="call-button contact-call" href="tel:+37322201505"><Icon name="phone" />{t({ ro: "Apelează Ghișeul Unic", ru: "Позвонить в Единое окно" })}</a><p className="contact-source">{t({ ro: "Contact din sursa Primăriei, preluată la 25.09.2026. Programul poate fi modificat. Apelul folosește aplicația de telefon a dispozitivului.", ru: "Контакт из источника примэрии от 25.09.2026. Расписание может измениться. Звонок открывается в приложении телефона." })}</p><Link href="/surse/pmc-home" className="sheet-text-link">{t({ ro: "Vezi sursa contactului", ru: "Источник контакта" })} ↗</Link></div>}
-          {sheet === "tools" && <div className="tool-list"><button type="button" onClick={() => { dialog.current?.close(); filePicker.current?.click(); }}><span className="tool-icon"><Icon name="document" /></span><span><strong>{t({ ro: "Un document, mai clar", ru: "Разобраться с документом" })}</strong><small>{t({ ro: "Fotografie sau PDF · se citește aici, în conversație", ru: "Фото или PDF · читается здесь, в диалоге" })}</small></span><Icon name="chevron" /></button><Link href="/raporteaza"><span className="tool-icon"><Icon name="pin" /></span><span><strong>{t({ ro: "Dă de veste", ru: "Сообщить о проблеме" })}</strong><small>{t({ ro: "Descrie → localizează → verifică · demo", ru: "Опишите → укажите место → проверьте · демо" })}</small></span><Icon name="chevron" /></Link><button type="button" onClick={() => setSheet("call")}><span className="tool-icon"><Icon name="phone" /></span><span><strong>{t({ ro: "Vorbește cu cineva", ru: "Поговорить с человеком" })}</strong><small>{t({ ro: "Contactul Ghișeului Unic", ru: "Контакт Единого окна" })}</small></span><Icon name="chevron" /></button><Link href="/surse"><span className="tool-icon"><Icon name="source" /></span><span><strong>{t({ ro: "Vezi sursele", ru: "Посмотреть источники" })}</strong><small>{t({ ro: "Documentele din spatele răspunsurilor", ru: "Документы, на которых основаны ответы" })}</small></span><Icon name="chevron" /></Link></div>}
+          {sheet === "call" && <VoiceCall lang={lang} open={voiceDialogOpen} />}
+          {sheet === "tools" && <div className="tool-list"><button type="button" onClick={() => { dialog.current?.close(); filePicker.current?.click(); }}><span className="tool-icon"><Icon name="document" /></span><span><strong>{t({ ro: "Un document, mai clar", ru: "Разобраться с документом" })}</strong><small>{t({ ro: "Fotografie sau PDF · se citește aici, în conversație", ru: "Фото или PDF · читается здесь, в диалоге" })}</small></span><Icon name="chevron" /></button><Link href="/raporteaza"><span className="tool-icon"><Icon name="pin" /></span><span><strong>{t({ ro: "Dă de veste", ru: "Сообщить о проблеме" })}</strong><small>{t({ ro: "O fotografie, un titlu, un pas înainte · demo", ru: "Фото, заголовок — и шаг вперёд · демо" })}</small></span><Icon name="chevron" /></Link><button type="button" onClick={() => { setSheet("call"); setVoiceDialogOpen(true); }}><span className="tool-icon"><Icon name="phone" /></span><span><strong>{t({ ro: "Vorbește cu cineva", ru: "Поговорить с человеком" })}</strong><small>{t({ ro: "Asistent vocal și contact uman", ru: "Голосовой помощник и контакт" })}</small></span><Icon name="chevron" /></button><Link href="/surse"><span className="tool-icon"><Icon name="source" /></span><span><strong>{t({ ro: "Vezi sursele", ru: "Посмотреть источники" })}</strong><small>{t({ ro: "Documentele din spatele răspunsurilor", ru: "Документы, на которых основаны ответы" })}</small></span><Icon name="chevron" /></Link></div>}
         </div>
       </dialog>
     </div>

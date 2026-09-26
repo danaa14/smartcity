@@ -5,7 +5,7 @@ import { summarizeVideo, type VideoSummary } from "@/lib/tickets/videoSummary";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 const MAX = 25 * 1024 * 1024;
-const VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+const VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm", "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a"]);
 
 export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);

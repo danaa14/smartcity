@@ -1,4 +1,5 @@
 export type Lang = "ro" | "ru";
+export type CorpusLang = Lang | "en";
 export type L10n = { ro: string; ru: string };
 
 export type DocStatus =
@@ -33,7 +34,7 @@ export interface SourceDoc {
   publisher: string;
   annexCategory: string | null;
   annexStartUrl: string | null;
-  lang: Lang;
+  lang: CorpusLang;
   docType: L10n;
   publishedAt?: string;
   effectiveAt?: string;
@@ -50,8 +51,10 @@ export interface Passage {
   id: string;
   docId: string;
   locator: L10n;
+  page?: number;
+  section?: string;
   text: string;
-  lang: Lang;
+  lang: CorpusLang;
   unofficialTranslation?: Partial<L10n>;
 }
 
