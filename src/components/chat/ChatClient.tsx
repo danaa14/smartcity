@@ -65,7 +65,6 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const filePicker = useRef<HTMLInputElement>(null);
   const pending = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const sequence = useRef(Math.max(0, ...turns.map((turn) => turn.id)));
@@ -156,9 +155,9 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     if (!file) return;
     if (file.size > MAX_BYTES) { setFileErr(true); return; }
     let goal: string;
-    let name: string;
+    const name = file.type === "application/pdf" ? t({ ro: "Document PDF", ru: "Документ PDF" }) : t({ ro: "Fotografie", ru: "Фотография" });
     try {
-      [goal, name] = await Promise.all([privateText(draft.trim().slice(0, 300)), privateText(file.name)]);
+      goal = await privateText(draft.trim().slice(0, 300));
     } catch {
       setPrivacyError(true);
       return;
@@ -167,7 +166,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     setValidation(false);
     setFileErr(false);
     setTurns((prev) => [...prev, { kind: "doc", id: ++sequence.current, file, name, goal }]);
-  }, [draft]);
+  }, [draft, t]);
 
   useEffect(() => {
     if (initialQuestion && !history.active && !initialSent.current) {
@@ -267,7 +266,6 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
         </div>
         <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); void ask(draft); }}>
           <button type="button" className="composer-tools" aria-label={t({ ro: "Adaugă un document sau pregătește o sesizare", ru: "Добавить документ или подготовить обращение" })} onClick={(e) => openSheet("tools", e.currentTarget)}><Icon name="plus" /></button>
-          <input ref={filePicker} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => { attach(e.target.files?.[0]); e.target.value = ""; }} />
           <label htmlFor="chat-message" className="sr-only">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label>
           <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
@@ -285,7 +283,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           <header className="sheet-header"><h2 id="sheet-title">{sheet === "faq" ? t({ ro: "Bine de știut", ru: "Полезно знать" }) : sheet === "call" ? t({ ro: "Asistent vocal", ru: "Голосовой помощник" }) : t({ ro: "Cu ce începem?", ru: "С чего начнём?" })}</h2><button type="button" className="sheet-close" aria-label={t({ ro: "Închide", ru: "Закрыть" })} onClick={() => dialog.current?.close()}><Icon name="close" /></button></header>
           {sheet === "faq" && <div className="faq-list">{FAQ.map((item) => <details key={item.q.ro}><summary>{t(item.q)}<Icon name="plus" /></summary><p>{t(item.a)}</p></details>)}<Link href="/surse" className="sheet-text-link">{t({ ro: "Explorează sursele", ru: "Посмотреть источники" })} ↗</Link></div>}
           {sheet === "call" && <VoiceCall lang={lang} open={voiceDialogOpen} />}
-          {sheet === "tools" && <div className="tool-list"><button type="button" onClick={() => { dialog.current?.close(); filePicker.current?.click(); }}><span className="tool-icon"><Icon name="document" /></span><span><strong>{t({ ro: "Un document, mai clar", ru: "Разобраться с документом" })}</strong><small>{t({ ro: "Fotografie sau PDF · se citește aici, în conversație", ru: "Фото или PDF · читается здесь, в диалоге" })}</small></span><Icon name="chevron" /></button><Link href="/raporteaza"><span className="tool-icon"><Icon name="pin" /></span><span><strong>{t({ ro: "Dă de veste", ru: "Сообщить о проблеме" })}</strong><small>{t({ ro: "O fotografie, un titlu, un pas înainte · demo", ru: "Фото, заголовок — и шаг вперёд · демо" })}</small></span><Icon name="chevron" /></Link><button type="button" onClick={() => { setSheet("call"); setVoiceDialogOpen(true); }}><span className="tool-icon"><Icon name="phone" /></span><span><strong>{t({ ro: "Vorbește cu cineva", ru: "Поговорить с человеком" })}</strong><small>{t({ ro: "Asistent vocal și contact uman", ru: "Голосовой помощник и контакт" })}</small></span><Icon name="chevron" /></button><Link href="/surse"><span className="tool-icon"><Icon name="source" /></span><span><strong>{t({ ro: "Vezi sursele", ru: "Посмотреть источники" })}</strong><small>{t({ ro: "Documentele din spatele răspunsurilor", ru: "Документы, на которых основаны ответы" })}</small></span><Icon name="chevron" /></Link></div>}
+          {sheet === "tools" && <div className="tool-list"><label className="tool-file"><input type="file" accept={ACCEPT} aria-label={t({ ro: "Alege o fotografie sau un PDF", ru: "Выберите фото или PDF" })} onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) { dialog.current?.close(); void attach(file); } }} /><span className="tool-icon"><Icon name="document" /></span><span><strong>{t({ ro: "Un document, mai clar", ru: "Разобраться с документом" })}</strong><small>{t({ ro: "Fotografie sau PDF · se citește aici, în conversație", ru: "Фото или PDF · читается здесь, в диалоге" })}</small></span><Icon name="chevron" /></label><Link href="/raporteaza"><span className="tool-icon"><Icon name="pin" /></span><span><strong>{t({ ro: "Dă de veste", ru: "Сообщить о проблеме" })}</strong><small>{t({ ro: "O fotografie, un titlu, un pas înainte · demo", ru: "Фото, заголовок — и шаг вперёд · демо" })}</small></span><Icon name="chevron" /></Link><button type="button" onClick={() => { setSheet("call"); setVoiceDialogOpen(true); }}><span className="tool-icon"><Icon name="phone" /></span><span><strong>{t({ ro: "Vorbește cu cineva", ru: "Поговорить с человеком" })}</strong><small>{t({ ro: "Asistent vocal și contact uman", ru: "Голосовой помощник и контакт" })}</small></span><Icon name="chevron" /></button><Link href="/surse"><span className="tool-icon"><Icon name="source" /></span><span><strong>{t({ ro: "Vezi sursele", ru: "Посмотреть источники" })}</strong><small>{t({ ro: "Documentele din spatele răspunsurilor", ru: "Документы, на которых основаны ответы" })}</small></span><Icon name="chevron" /></Link></div>}
         </div>
       </dialog>
     </div>

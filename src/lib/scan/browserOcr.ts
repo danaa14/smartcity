@@ -108,9 +108,29 @@ async function fileToCanvases(file: File, onProgress?: Progress): Promise<HTMLCa
     }
     return out;
   }
-  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-  onProgress?.("render", 1, 1, 1);
-  return [preprocess(bmp, bmp.width, bmp.height)];
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      try {
+        onProgress?.("render", 1, 1, 1);
+        return [preprocess(bmp, bmp.width, bmp.height)];
+      } finally {
+        bmp.close();
+      }
+    } catch {
+      // Some mobile Safari versions cannot decode a chosen camera image as an ImageBitmap.
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    onProgress?.("render", 1, 1, 1);
+    return [preprocess(img, img.naturalWidth, img.naturalHeight)];
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /** Token-local fixes for systematic OCR errors on Romanian/Russian print; safe to apply to both page text and single words. */
