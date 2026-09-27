@@ -68,10 +68,23 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
 
   // Draft: pick direct-answer facts for the aspects asked about; default to the core facts.
   const wanted = aspects.filter((a) => a !== "contact" || aspects.length === 1);
-  let direct = topicFacts.filter(
-    (f) => !topic.contactFactIds.includes(f.id) && (keywordFactMatch(q, f.keywords) || f.aspects.some((a) => wanted.includes(a))),
+  const nonContactFacts = topicFacts.filter(
+    (f) => !topic.contactFactIds.includes(f.id),
   );
-  if (!direct.length) direct = topicFacts.filter((f) => f.core);
+
+  const explicitlyMatchedFacts = nonContactFacts.filter((f) =>
+    keywordFactMatch(q, f.keywords),
+  );
+
+  let direct = explicitlyMatchedFacts.length
+    ? explicitlyMatchedFacts
+    : nonContactFacts.filter((f) =>
+        f.aspects.some((a) => wanted.includes(a)),
+      );
+
+  if (!direct.length) {
+    direct = topicFacts.filter((f) => f.core);
+  }
   if (aspects.includes("contact")) direct = [...direct, ...topicFacts.filter((f) => topic.contactFactIds.includes(f.id))];
   direct = dedupe(direct).slice(0, 7);
 
