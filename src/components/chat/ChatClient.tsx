@@ -33,8 +33,9 @@ type ServerEvent =
 /**
  * Names are masked by the on-device model (~280 MB, the smallest published variant), and no
  * question leaves the browser before it has been checked by it. What keeps the first question
- * fast is starting the download as soon as the person focuses or types in the box, so it runs
- * while they write instead of after they press send. Progress is shared with the composer.
+ * fast is starting the download as soon as the chat opens (or, with the browser's data saver
+ * on, when the person focuses or types in the box), so it runs while they read and write instead
+ * of after they press send. Progress is shared with the composer.
  */
 let nameModelProgress: number | null = null;
 const nameModelListeners = new Set<(pct: number | null) => void>();
@@ -95,6 +96,10 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const [privacyError, setPrivacyError] = useState(false);
   // Download progress of the name model while a question waits for it (null: not waiting).
   const [preparing, setPreparing] = useState<number | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!(navigator as any).connection?.saveData) warmNameModel().catch(() => {});
+  }, []);
   useEffect(() => {
     const listener = (pct: number | null) => setPreparing((current) => (current === null ? null : pct ?? 0));
     nameModelListeners.add(listener);

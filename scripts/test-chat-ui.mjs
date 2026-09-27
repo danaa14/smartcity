@@ -55,7 +55,7 @@ async function page(lang = "ro") {
 }
 
 // 1c. No question leaves the browser before the on-device name model (~280 MB) has checked it,
-//     not even the first one; the download starts when the box is focused, not on send, and
+//     not even the first one; the download starts when the chat opens, not on send, and
 //     the wait shows its progress. If the model cannot load, nothing is sent.
 {
   const p = await page();
@@ -66,12 +66,8 @@ async function page(lang = "ro") {
     if (/multilang-pii-ner-ONNX/.test(r.url())) modelRequestedAt = Math.min(modelRequestedAt, Date.now());
   });
   await p.goto(`${BASE}/intreaba`);
-  await p.waitForLoadState("networkidle");
-  const beforeFocus = modelRequestedAt;
-  await p.focus("#chat-message");
   await p.waitForTimeout(1500);
-  check("privacy: model not downloaded before the box is used", beforeFocus === Infinity);
-  check("privacy: model download starts on focus, before sending", modelRequestedAt !== Infinity && !bodies.length);
+  check("privacy: model download starts when the chat opens, before any question", modelRequestedAt !== Infinity && !bodies.length);
   await p.fill("#chat-message", "Mă numesc Ion Popescu, IDNP 2001234567890, cum depun o petiție?");
   await p.keyboard.press("Enter");
   const shown = await p.getByRole("status").filter({ hasText: "Pregătesc protecția datelor personale" }).waitFor({ timeout: 5000 }).then(() => true, () => false);
