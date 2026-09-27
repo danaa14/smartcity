@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   if (!validLinks) errors.links = "invalid_links";
   if (mediaFiles.length > 4) errors.media = "too_many_files";
   for (const file of mediaFiles) {
-    const issue = validateMedia(file); if (issue) errors.media = issue;
+    const issue = await validateMedia(file).catch(() => "unsupported_type"); if (issue) errors.media = issue;
   }
   if (!CAT_IDS.has(category)) errors.category = "category_missing";
   if (s("confirm") !== "yes") errors.confirm = "not_confirmed";

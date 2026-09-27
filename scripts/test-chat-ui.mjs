@@ -54,6 +54,46 @@ async function page(lang = "ro") {
   await p.context().close();
 }
 
+// 1c. No question leaves the browser before the on-device name model (~280 MB) has checked it,
+//     not even the first one; the download starts when the chat opens, not on send, and
+//     the wait shows its progress. If the model cannot load, nothing is sent.
+{
+  const p = await page();
+  const bodies = [];
+  let modelRequestedAt = Infinity;
+  p.on("request", (r) => {
+    if (r.url().includes("/api/ask")) bodies.push(r.postData() ?? "");
+    if (/multilang-pii-ner-ONNX/.test(r.url())) modelRequestedAt = Math.min(modelRequestedAt, Date.now());
+  });
+  await p.goto(`${BASE}/intreaba`);
+  await p.waitForTimeout(1500);
+  check("privacy: model download starts when the chat opens, before any question", modelRequestedAt !== Infinity && !bodies.length);
+  await p.fill("#chat-message", "Mă numesc Ion Popescu, IDNP 2001234567890, cum depun o petiție?");
+  await p.keyboard.press("Enter");
+  const shown = await p.getByRole("status").filter({ hasText: "Pregătesc protecția datelor personale" }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  check("privacy: waiting question shows the download progress", shown || bodies.length > 0);
+  await p.waitForFunction(() => document.querySelectorAll("[id$='-ans-h'], .chat-error").length >= 1, null, { timeout: 300000 });
+  const first = bodies[0] ? JSON.parse(bodies[0]).question : "";
+  check("privacy: name masked in the very first question", first.length > 0 && !first.includes("Popescu") && /\[NUME_1\]/.test(first), first);
+  check("privacy: IDNP masked in the very first question", first.length > 0 && !first.includes("2001234567890"));
+  check("privacy: progress hint gone once sent", (await p.getByText("Pregătesc protecția datelor personale").count()) === 0);
+  await p.context().close();
+}
+{
+  const p = await page();
+  const bodies = [];
+  await p.route(/huggingface\.co|hf\.co/, (route) => route.abort());
+  p.on("request", (r) => { if (r.url().includes("/api/ask")) bodies.push(r.postData() ?? ""); });
+  await p.goto(`${BASE}/intreaba`);
+  await p.waitForLoadState("networkidle");
+  await p.fill("#chat-message", "Mă numesc Ion Popescu și vreau să depun o petiție.");
+  await p.keyboard.press("Enter");
+  const failed = await p.locator(".composer-error").filter({ hasText: "Nu am putut verifica datele personale" }).waitFor({ timeout: 60000 }).then(() => true, () => false);
+  check("privacy: model unavailable → question not sent", failed && bodies.length === 0, `${bodies.length} sent`);
+  check("privacy: model unavailable → text kept in the box", (await p.inputValue("#chat-message")).includes("Popescu"));
+  await p.context().close();
+}
+
 // 2. Text typed before the session check finishes is not wiped.
 {
   const p = await page();
