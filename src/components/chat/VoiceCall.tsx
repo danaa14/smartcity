@@ -18,24 +18,24 @@ const LABELS: Record<Lang, Record<VoiceStatus, string>> = {
 
 const COPY = {
   ro: {
-    intro: "Caut în paginile și documentele oficiale indexate din sursele catalogate în Anexa 1. Audio este transmis furnizorului vocal pentru procesare; aplicația nu salvează înregistrări sau transcripturi după închiderea ferestrei.",
-    start: "Pornește asistentul vocal", retry: "Încearcă din nou", end: "Încheie apelul", stop: "Oprește răspunsul", transcript: "Conversație", sources: "Surse folosite", noSources: "Nu am găsit dovezi relevante în sursele oficiale indexate.",
+    intro: "Vorbiți firesc, ca la telefon: vă răspund în română și verific informația în sursele oficiale. Sunetul este transmis furnizorului vocal pentru procesare; nu păstrăm înregistrări sau transcrieri după ce închideți fereastra.",
+    start: "Pornește asistentul vocal", retry: "Încearcă din nou", end: "Încheie apelul", stop: "Oprește răspunsul", transcript: "Conversație", sources: "Surse folosite", noSources: "Nu am găsit informații oficiale despre asta.",
     unavailable: "Serviciul vocal nu este disponibil. Încearcă din nou sau sună la Ghișeul Unic.", denied: "Accesul la microfon a fost refuzat. Permite-l în setările browserului și încearcă din nou.", missingMic: "Nu a fost găsit un microfon. Conectează un microfon și reîncearcă.", micBusy: "Microfonul nu poate fi deschis. Verifică dacă este folosit de altă aplicație.", network: "Conexiunea la serviciul vocal a eșuat. Verifică internetul și încearcă din nou.", timeout: "Asistentul nu a început să asculte în 15 secunde. Încearcă din nou sau sună la Ghișeul Unic.", unsupported: "Acest browser nu acceptă apeluri vocale. Continuă conversația în scris.",
     wrongLanguage: "Întrebarea pare să fie în rusă, dar limba selectată este româna. Schimbă limba site-ului sau corectează transcriptul înainte de trimitere.",
     searchError: "Nu am putut verifica sursa. Încearcă din nou sau scrie întrebarea în chat.",
     user: "Tu", assistant: "pe fir", page: "Pagina", checked: "Verificat", expand: "Vezi pasajul", human: "Preferi să vorbești cu o persoană?", humanCall: "Sună la Ghișeul Unic · +373 22 20 15 05",
     allSources: "Deschide catalogul surselor", correct: "Corectează întrebarea recunoscută", askCorrected: "Trimite întrebarea corectată", privacy: "Întrebarea recunoscută este păstrată doar în această fereastră.",
-    greeting: "Salută utilizatorul în limba curentă a interfeței. Spune pe scurt că poți căuta în paginile și documentele oficiale indexate din sursele catalogate în Anexa 1, apoi invită-l să întrebe.",
+    greeting: "Vorbește numai în limba română. Spune exact, cald și firesc, apoi taci și ascultă: «Bună ziua, aici pe fir. Cu ce vă pot ajuta? De exemplu, contractul de apă, o petiție sau o problemă din cartier.» Nu adăuga nimic despre surse, anexe, documente sau despre cum funcționezi.",
   },
   ru: {
-    intro: "Я ищу в проиндексированных официальных страницах и документах, перечисленных в каталоге Приложения 1. Аудио передаётся голосовому провайдеру для обработки; приложение не сохраняет записи или расшифровки после закрытия окна.",
-    start: "Начать голосовой разговор", retry: "Повторить", end: "Завершить звонок", stop: "Остановить ответ", transcript: "Диалог", sources: "Использованные источники", noSources: "В проиндексированных официальных источниках не найдено релевантных сведений.",
+    intro: "Говорите свободно, как по телефону: я отвечаю по-русски и сверяю сведения с официальными источниками. Звук передаётся голосовому провайдеру для обработки; мы не храним записи и расшифровки после закрытия окна.",
+    start: "Начать голосовой разговор", retry: "Повторить", end: "Завершить звонок", stop: "Остановить ответ", transcript: "Диалог", sources: "Использованные источники", noSources: "Официальных сведений об этом не нашлось.",
     unavailable: "Голосовой сервис недоступен. Попробуйте снова или позвоните в Единое окно.", denied: "Доступ к микрофону запрещён. Разрешите его в настройках браузера и попробуйте снова.", missingMic: "Микрофон не найден. Подключите микрофон и повторите попытку.", micBusy: "Не удалось открыть микрофон. Проверьте, не использует ли его другое приложение.", network: "Не удалось подключиться к голосовому сервису. Проверьте интернет и попробуйте снова.", timeout: "Ассистент не начал слушать за 15 секунд. Попробуйте снова или позвоните в Единое окно.", unsupported: "Этот браузер не поддерживает голосовые звонки. Продолжите диалог письменно.",
     wrongLanguage: "Похоже, вопрос задан по-румынски, а на сайте выбран русский. Смените язык сайта или исправьте расшифровку перед отправкой.",
     searchError: "Не удалось проверить источник. Попробуйте снова или напишите вопрос в чате.",
     user: "Вы", assistant: "pe fir", page: "Страница", checked: "Проверено", expand: "Показать фрагмент", human: "Хотите поговорить с человеком?", humanCall: "Единое окно · +373 22 20 15 05",
     allSources: "Открыть каталог источников", correct: "Исправить распознанный вопрос", askCorrected: "Отправить исправленный вопрос", privacy: "Распознанный вопрос хранится только в этом окне.",
-    greeting: "Поприветствуй пользователя на текущем языке интерфейса. Кратко объясни, что ты ищешь в проиндексированных официальных страницах и документах из каталога Приложения 1, и предложи задать вопрос.",
+    greeting: "Говори только по-русски. Скажи ровно это, тепло и естественно, затем замолчи и слушай: «Здравствуйте, это pe fir. Чем могу помочь? Например, договор на воду, петиция или проблема во дворе.» Ничего не добавляй об источниках, приложениях, документах или о том, как ты работаешь.",
   },
 } as const;
 

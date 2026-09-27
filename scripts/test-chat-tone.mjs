@@ -109,6 +109,24 @@ const { INSTRUCTIONS } = await import('../src/server/api/voice.ts');
 for (const lang of ['ro', 'ru']) {
   assert.doesNotMatch(INSTRUCTIONS(lang), /name each source title/);
   assert.match(INSTRUCTIONS(lang), /Do not read out source titles/);
+  // The language rule comes first, and the examples are in the caller's language, not English.
+  assert.match(INSTRUCTIONS(lang), lang === 'ro' ? /^LANGUAGE: speak ONLY Romanian/ : /^LANGUAGE: speak ONLY Russian/);
+  assert.doesNotMatch(INSTRUCTIONS(lang), /For your situation you'll need|Here's what to do/);
+  assert.match(INSTRUCTIONS(lang), lang === 'ro' ? /Pentru situația dumneavoastră aveți nevoie de/ : /В вашем случае понадобится/);
+  assert.match(INSTRUCTIONS(lang), /Never list what you can do/);
+}
+// The spoken greeting is a fixed, natural line in the platform language: no capability list,
+// no talk about annexes or sources; the on-screen intro does not mention the annex either.
+const { readFileSync } = await import('node:fs');
+const voiceUi = readFileSync(new URL('../src/components/chat/VoiceCall.tsx', import.meta.url), 'utf8');
+// COPY lists the Romanian block first, then the Russian one.
+const field = (lang, key) => [...voiceUi.matchAll(new RegExp(`\\b${key}: "([^"]*)"`, 'g'))][lang === 'ro' ? 0 : 1][1];
+assert.match(field('ro', 'greeting'), /^Vorbește numai în limba română\. .*«Bună ziua, aici pe fir\. Cu ce vă pot ajuta\?/);
+assert.match(field('ru', 'greeting'), /^Говори только по-русски\. .*«Здравствуйте, это pe fir\. Чем могу помочь\?/);
+for (const lang of ['ro', 'ru']) {
+  const said = field(lang, 'greeting').match(/«([^»]*)»/)[1];
+  assert.doesNotMatch(said, /Anex|Приложени|surs|источник|document|документ|index/i, said);
+  assert.doesNotMatch(field(lang, 'intro'), /Anexa|Приложени|indexat|проиндекс/i);
 }
 console.log('VOICE TONE OK');
 
