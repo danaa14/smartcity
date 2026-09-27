@@ -62,6 +62,10 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
   const audio = useRef<HTMLAudioElement>(null);
   const lineSequence = useRef(0);
   const searchBusy = useRef(false);
+  const searchController = useRef<AbortController | null>(null);
+  const responseActive = useRef(false);
+  const playbackActive = useRef(false);
+  const pendingTools = useRef(0);
   const sessionGeneration = useRef(0);
   const startupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognizedRef = useRef("");
@@ -77,6 +81,11 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
   const release = useCallback(() => {
     clearStartupTimer();
     sessionGeneration.current += 1;
+    searchController.current?.abort();
+    searchController.current = null;
+    responseActive.current = false;
+    playbackActive.current = false;
+    pendingTools.current = 0;
     channel.current?.close();
     channel.current = null;
     peer.current?.close();
@@ -113,43 +122,67 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
     if (channel.current?.readyState === "open") channel.current.send(JSON.stringify(value));
   };
 
+  const resumeListening = () => {
+    if (responseActive.current || playbackActive.current || searchBusy.current) return;
+    if (peer.current?.connectionState !== "connected") return;
+    setMicrophoneEnabled(true);
+    setStatus("listening");
+  };
+
+  const requestResponse = (response?: { instructions: string }) => {
+    responseActive.current = true;
+    setMicrophoneEnabled(false);
+    setStatus("thinking");
+    sendEvent({ type: "response.create", ...(response ? { response } : {}) });
+  };
+
   const selectedLang = useRef(lang);
   useEffect(() => {
     if (selectedLang.current === lang) return;
     selectedLang.current = lang;
-    if (channel.current?.readyState === "open") {
-      channel.current.send(JSON.stringify({ type: "session.update", session: {
-        instructions: lang === "ru" ? "Speak and transcribe only Russian from now on. Use only relevant official passages returned by the search tool; abstain if evidence is missing." : "Vorbește și transcrie numai în română de acum înainte. Folosește doar pasaje oficiale relevante întoarse de căutare; abține-te dacă lipsesc dovezile.",
-        audio: { input: { transcription: { model: "gpt-4o-mini-transcribe", language: lang, prompt: lang === "ru" ? "Вопросы о муниципальных услугах Кишинёва. Точно сохраняй названия улиц и учреждений, даты, суммы и номера документов." : "Întrebări despre servicii municipale în Chișinău. Păstrează exact numele străzilor și instituțiilor, datele, sumele și numerele documentelor." } }, output: { voice: "marin" } },
-      } }));
-    }
-  }, [lang]);
+    release();
+    setStatus("idle");
+    setRecognizedQuestion("");
+    recognizedRef.current = "";
+  }, [lang, release]);
 
   const search = async (event: { call_id?: string; arguments?: string }) => {
-    if (!event.call_id || searchBusy.current) return;
+    if (!event.call_id) return;
+    const generation = sessionGeneration.current;
+    const controller = searchController.current ?? new AbortController();
+    searchController.current = controller;
+    pendingTools.current += 1;
     searchBusy.current = true;
     setStatus("thinking");
     try {
       const args = JSON.parse(event.arguments ?? "{}") as { query?: unknown };
-      const query = (recognizedRef.current || (typeof args.query === "string" ? args.query : "")).slice(0, 300).trim();
+      const query = ((typeof args.query === "string" ? args.query.trim() : "") || recognizedRef.current).slice(0, 300).trim();
       if (!query) throw new Error("invalid_tool_arguments");
       const response = await fetch("/api/voice/search", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ query, lang: selectedLang.current }),
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]),
       });
       if (!response.ok) throw new Error("search_unavailable");
       const result = await response.json() as SearchResult;
+      if (generation !== sessionGeneration.current || controller.signal.aborted) return;
       setSourceGroups((current) => [...current, { id: ++lineSequence.current, query, results: result.results, fallback: result.results.length ? "" : result.fallback, missingParts: result.missingParts ?? [], nextSteps: result.nextSteps ?? [] }]);
       sendEvent({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify(result) } });
-      sendEvent({ type: "response.create" });
     } catch {
+      if (generation !== sessionGeneration.current || controller.signal.aborted) return;
       setError(COPY[selectedLang.current].searchError);
       setSourceGroups((current) => [...current, { id: ++lineSequence.current, query: "", results: [], fallback: COPY[selectedLang.current].noSources, missingParts: [], nextSteps: [] }]);
       sendEvent({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify({ results: [], fallback: COPY[selectedLang.current].noSources }) } });
-      sendEvent({ type: "response.create" });
     } finally {
-      searchBusy.current = false;
+      if (generation === sessionGeneration.current && !controller.signal.aborted) {
+        pendingTools.current -= 1;
+        searchBusy.current = pendingTools.current > 0;
+        if (!searchBusy.current && !responseActive.current) {
+          responseActive.current = true;
+          sendEvent({ type: "response.create" });
+        }
+      }
     }
   };
 
@@ -160,6 +193,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       setMicrophoneEnabled(false);
       setStatus("thinking");
     } else if (type === "response.created") {
+      responseActive.current = true;
       setMicrophoneEnabled(false);
       setStatus("thinking");
     } else if (type === "conversation.item.input_audio_transcription.completed") {
@@ -173,13 +207,27 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
         const latin = (transcript.match(/[a-zA-ZăâîșțşţĂÂÎȘȚ]/g) ?? []).length;
         if ((selectedLang.current === "ro" && cyrillic > latin) || (selectedLang.current === "ru" && latin > cyrillic && latin > 5)) {
           setError(COPY[selectedLang.current].wrongLanguage);
-          setMicrophoneEnabled(true);
-          setStatus("listening");
+          resumeListening();
           return;
         }
-        sendEvent({ type: "response.create" });
+        requestResponse();
       }
-      setStatus("thinking");
+      if (!transcript) {
+        resumeListening();
+      } else setStatus("thinking");
+    } else if (type === "conversation.item.input_audio_transcription.failed") {
+      setError(COPY[selectedLang.current].searchError);
+      resumeListening();
+    } else if (type === "output_audio_buffer.started") {
+      playbackActive.current = true;
+      setMicrophoneEnabled(false);
+      setStatus("speaking");
+    } else if (type === "output_audio_buffer.stopped" || type === "output_audio_buffer.cleared") {
+      playbackActive.current = false;
+      if (!searchBusy.current && !responseActive.current) {
+        setMicrophoneEnabled(true);
+        setStatus("listening");
+      }
     } else if (type === "response.output_audio.delta") setStatus("speaking");
     else if (type === "response.output_audio_transcript.delta") {
       setStatus("speaking");
@@ -188,19 +236,26 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       if (event.name === "searchMunicipalDocuments") void search({ call_id: typeof event.call_id === "string" ? event.call_id : undefined, arguments: typeof event.arguments === "string" ? event.arguments : undefined });
       else if (typeof event.call_id === "string") {
         sendEvent({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: JSON.stringify({ results: [], fallback: COPY[selectedLang.current].noSources }) } });
-        sendEvent({ type: "response.create" });
       }
     } else if (type === "response.done") {
-      const response = event.response as { status?: string; status_details?: { error?: { code?: string } } } | undefined;
+      responseActive.current = false;
+      const response = event.response as { output?: { type?: string }[]; status?: string; status_details?: { error?: { code?: string } } } | undefined;
       if (response?.status === "failed") {
         release();
         setStatus("error");
         setError(COPY[selectedLang.current].unavailable);
-      } else if (peer.current?.connectionState === "connected") {
+      } else if (response?.output?.some((item) => item.type === "function_call")) {
+        if (!searchBusy.current) {
+          responseActive.current = true;
+          sendEvent({ type: "response.create" });
+        }
+      } else if (!searchBusy.current && !playbackActive.current && peer.current?.connectionState === "connected") {
         setMicrophoneEnabled(true);
         setStatus("listening");
       }
     } else if (type === "error") {
+      const detail = event.error as { code?: string } | undefined;
+      if (detail?.code === "response_cancel_not_active") return;
       release();
       setStatus("error");
       setError(COPY[selectedLang.current].unavailable);
@@ -208,6 +263,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
   };
 
   const start = async () => {
+    release();
     setError("");
     setSourceGroups([]);
     setLines([]);
@@ -233,10 +289,17 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       const readiness = await readinessResponse.json().catch(() => ({})) as { ready?: boolean };
       if (generation !== sessionGeneration.current) return;
       if (!readinessResponse.ok || !readiness.ready) throw new Error("voice_not_configured");
+      clearStartupTimer(); // Permission decisions are controlled by the user, not a network deadline.
       setStatus("requesting-microphone");
       const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (generation !== sessionGeneration.current) { mic.getTracks().forEach((track) => track.stop()); return; }
       microphone.current = mic;
+      startupTimer.current = setTimeout(() => {
+        if (generation !== sessionGeneration.current) return;
+        release();
+        setStatus("error");
+        setError(COPY[selectedLang.current].timeout);
+      }, 15_000);
       setStatus("connecting");
       const tokenResponse = await fetch("/api/voice/token", { method: "POST", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang }) });
       const token = await tokenResponse.json().catch(() => ({})) as { value?: string; error?: string };
@@ -250,6 +313,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
         if (audio.current) audio.current.srcObject = event.streams[0];
       };
       connection.onconnectionstatechange = () => {
+        if (generation !== sessionGeneration.current) return;
         if (connection.connectionState === "failed") {
           release();
           setStatus("error");
@@ -264,13 +328,14 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       const dataChannel = connection.createDataChannel("oai-events");
       channel.current = dataChannel;
       dataChannel.onmessage = (message) => {
+        if (generation !== sessionGeneration.current) return;
         try { handleServerEvent(JSON.parse(message.data) as Record<string, unknown>); }
         catch { setError(COPY[selectedLang.current].unavailable); }
       };
       dataChannel.onopen = () => {
+        if (generation !== sessionGeneration.current) return;
         clearStartupTimer();
-        setStatus("listening");
-        sendEvent({ type: "response.create", response: { instructions: COPY[selectedLang.current].greeting } });
+        requestResponse({ instructions: COPY[selectedLang.current].greeting });
       };
       dataChannel.onclose = () => {
         if (peer.current === connection && connection.connectionState !== "closed") {
@@ -308,22 +373,22 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
   };
 
   const interrupt = () => {
-    sendEvent({ type: "response.cancel" });
+    if (responseActive.current) sendEvent({ type: "response.cancel" });
     sendEvent({ type: "output_audio_buffer.clear" });
-    setMicrophoneEnabled(true);
-    setStatus("listening");
+    // Wait for cancellation and buffer-cleared acknowledgements before listening.
+    // Otherwise a new turn races the response that is still active on the server.
+    setStatus("thinking");
+    resumeListening();
   };
 
   const askCorrected = () => {
     const text = recognizedQuestion.trim();
-    if (!text) return;
+    if (!text || status !== "listening" || channel.current?.readyState !== "open") return;
     setError("");
     recognizedRef.current = text;
     addLine("user", text);
     sendEvent({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text }] } });
-    sendEvent({ type: "response.create" });
-    setMicrophoneEnabled(false);
-    setStatus("thinking");
+    requestResponse();
   };
 
   const copy = COPY[lang];
@@ -349,8 +414,8 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       {recognizedQuestion && status !== "ended" && (
         <div className="voice-call-correction">
           <label htmlFor="voice-corrected-question">{copy.correct}</label>
-          <textarea id="voice-corrected-question" value={recognizedQuestion} onChange={(event) => { recognizedRef.current = event.target.value; setRecognizedQuestion(event.target.value); }} rows={2} />
-          <button type="button" onClick={askCorrected}>{copy.askCorrected}</button>
+          <textarea id="voice-corrected-question" value={recognizedQuestion} maxLength={300} onChange={(event) => setRecognizedQuestion(event.target.value)} rows={2} />
+          <button type="button" onClick={askCorrected} disabled={status !== "listening"}>{copy.askCorrected}</button>
           <p>{copy.privacy}</p>
         </div>
       )}
@@ -383,7 +448,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
 
       <div className="voice-call-actions">
         {active
-          ? <><button type="button" className="voice-call-end" onClick={end}>{copy.end}</button>{(status === "speaking" || status === "thinking") && <button type="button" onClick={interrupt}>{copy.stop}</button>}</>
+          ? <><button type="button" className="voice-call-end" onClick={end}>{copy.end}</button>{(status === "speaking") && <button type="button" onClick={interrupt}>{copy.stop}</button>}</>
           : <button type="button" className="voice-call-start" onClick={() => void start()}>{status === "error" ? copy.retry : copy.start}</button>}
       </div>
       <p className="voice-call-human">{copy.human} <a href="tel:+37322201505">{copy.humanCall}</a></p>

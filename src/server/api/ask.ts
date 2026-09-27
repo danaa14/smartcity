@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { answerWithModel } from "@/lib/answer/withModel";
 import { answerQuestion } from "@/lib/answer/pipeline";
-import { askGeneral, isSmallTalk, proseAnswer, streamGeneral, type DocContext } from "@/lib/answer/general";
+import { askGeneral, proseAnswer, streamGeneral, type DocContext } from "@/lib/answer/general";
 import { withWebFallback, type WebResult } from "@/lib/web/search";
 import { retrieve } from "@/lib/retrieval";
 import { logReview } from "@/lib/feedback";
@@ -9,6 +9,7 @@ import { logAsk } from "@/lib/staff/events";
 import { AI } from "@/lib/ai/config";
 import type { Lang } from "@/lib/corpus/types";
 import type { Answer } from "@/lib/answer/types";
+import { contextualQuestion, refersToDocument, sanitizeHistory } from "@/lib/chat/context";
 import { detectLang } from "@/lib/text";
 
 export const runtime = "nodejs";
@@ -80,44 +81,44 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
   if (rateLimited(ip)) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
 
-  const body = (await req.json().catch(() => null)) as { question?: string; lang?: string; history?: Turn[]; document?: unknown } | null;
-  const question = body?.question?.trim();
+  const body = (await req.json().catch(() => null)) as { question?: unknown; lang?: unknown; history?: unknown; document?: unknown } | null;
+  const question = typeof body?.question === "string" ? body.question.trim() : "";
   if (!question) return NextResponse.json({ error: "empty_question" }, { status: 400 });
   if (question.length > MAX_QUESTION) return NextResponse.json({ error: "too_long" }, { status: 400 });
 
   const uiLang: Lang = body?.lang === "ru" ? "ru" : "ro";
   const hasCyrillic = /[\u0400-\u04FF]/.test(question);
   const lang: Lang = hasCyrillic ? detectLang(question) : uiLang;
-  const history = historyOf(Array.isArray(body?.history) ? body.history : []);
+  const turns = sanitizeHistory(body?.history);
+  const history = historyOf(turns);
+  const query = contextualQuestion(question, turns, lang);
   const doc = documentOf(body?.document);
   const wantsStream = (req.headers.get("accept") ?? "").includes("text/event-stream");
 
-  return wantsStream ? streamed(req, question, lang, history, doc) : json(req, question, lang, history, doc);
+  const execution = { signal: AbortSignal.any([req.signal, AbortSignal.timeout(45_000)]) };
+  return wantsStream ? streamed(execution, question, lang, history, doc, query) : json(execution, question, lang, history, doc, query);
 }
 
 /**
  * A cited corpus answer when the corpus reaches the question, otherwise labelled prose.
- * An attached document never outranks the corpus: it only feeds the uncited path, which is
- * where questions about the user's own paperwork land.
+ * An active personal document uses the document-aware path so a coincidental corpus
+ * keyword cannot replace analysis of the actual uploaded clauses.
  */
-async function resolve(req: Request, question: string, lang: Lang, history: string, doc?: DocContext): Promise<Answer> {
-  const grounded = retrieve(question).grounded;
+async function resolve(req: Pick<Request, "signal">, question: string, lang: Lang, history: string, doc?: DocContext, query = question): Promise<Answer> {
+  const grounded = !(doc && refersToDocument(question)) && retrieve(query).grounded;
   if (grounded) {
-    const corpus = await answerWithModel(question, lang, req.signal);
-    if (corpus) return withWebFallback(corpus, question);
+    const corpus = await answerWithModel(query, lang, req.signal);
+    if (corpus) return withWebFallback({ ...corpus, question }, query);
   }
-  // Keep open-domain prose for small talk and questions about an uploaded personal document.
-  // Municipal questions without matching official evidence must not fall through to model memory/web.
-  if (!isSmallTalk(question) && !doc) return answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
-  if (!AI.enabled) return answerQuestion(question, lang, { includeDemo: false });
+  if (!AI.enabled) return answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
   const web = Promise.resolve<WebResult[]>([]);
   const text = await askGeneral(question, lang, history, req.signal, doc);
   return proseAnswer(question, lang, text, await web);
 }
 
-async function json(req: Request, question: string, lang: Lang, history: string, doc?: DocContext) {
+async function json(req: Pick<Request, "signal">, question: string, lang: Lang, history: string, doc?: DocContext, query = question) {
   try {
-    const answer = await resolve(req, question, lang, history, doc);
+    const answer = await resolve(req, question, lang, history, doc, query);
     await record(answer, question, lang);
     return NextResponse.json(answer);
   } catch (e) {
@@ -126,16 +127,18 @@ async function json(req: Request, question: string, lang: Lang, history: string,
   }
 }
 
-function streamed(req: Request, question: string, lang: Lang, history: string, doc?: DocContext) {
+function streamed(req: Pick<Request, "signal">, question: string, lang: Lang, history: string, doc?: DocContext, query = question) {
   const enc = new TextEncoder();
   const phases = PHASES[lang];
   const t0 = Date.now();
+  let open = true;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let open = true;
       const send = (obj: object) => {
-        if (open) controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        if (!open) return;
+        try { controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`)); }
+        catch { open = false; }
       };
       const close = () => {
         if (open) controller.close();
@@ -143,18 +146,18 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
       };
 
       try {
-        const grounded = retrieve(question).grounded;
+        const grounded = !(doc && refersToDocument(question)) && retrieve(query).grounded;
         if (grounded) {
           send({ type: "phase", label: phases.search });
           const ticker = setInterval(() => send({ type: "phase", label: phases.verify }), 6000);
           let corpus: Answer | null;
           try {
-            corpus = await answerWithModel(question, lang, req.signal);
+            corpus = await answerWithModel(query, lang, req.signal);
           } finally {
             clearInterval(ticker);
           }
           if (corpus) {
-            const answer = await withWebFallback(corpus, question);
+            const answer = await withWebFallback({ ...corpus, question }, query);
             console.log(`[ask] corpus ms=${Date.now() - t0} status=${answer.status} claims=${answer.claims.length}`);
             send({ type: "answer", answer });
             await record(answer, question, lang);
@@ -162,12 +165,10 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
           }
         }
 
-        if (!isSmallTalk(question) && !doc) {
-          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false, forceMissing: true }) });
-          return close();
-        }
         if (!AI.enabled) {
-          send({ type: "answer", answer: answerQuestion(question, lang, { includeDemo: false }) });
+          const answer = answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
+          send({ type: "answer", answer });
+          await record(answer, question, lang);
           return close();
         }
 
@@ -194,12 +195,16 @@ function streamed(req: Request, question: string, lang: Lang, history: string, d
         await record(answer, question, lang);
         close();
       } catch (e) {
-        if (req.signal.aborted) return close();
+        if (req.signal.aborted) {
+          send({ type: "error", message: offline(lang) });
+          return close();
+        }
         console.error(`[ask] stream failed: ${e instanceof Error ? e.message.slice(0, 160) : String(e)}`);
         send({ type: "error", message: offline(lang) });
         close();
       }
     },
+    cancel() { open = false; },
   });
 
   return new Response(stream, {

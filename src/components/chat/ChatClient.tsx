@@ -123,8 +123,8 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
         }
       }
       if (!settled) throw new Error("incomplete");
-    } catch (e) {
-      if ((e as Error)?.name !== "AbortError") patch({ failed: true, phase: undefined, text: undefined });
+    } catch {
+      patch({ failed: true, phase: undefined, text: undefined });
     } finally {
       clearTimeout(timeout);
       pending.current = false;

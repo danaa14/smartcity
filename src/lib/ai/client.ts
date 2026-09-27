@@ -49,7 +49,7 @@ export async function complete(system: string, user: string, sessionId: string, 
     } catch (e) {
       const m = e instanceof ModelError;
       console.warn(`[ai] complete fail session=${sessionId} attempt=${attempt + 1} code=${m ? e.code : "?"} status=${m ? e.status ?? "-" : "-"} ms=${Date.now() - t0} msg=${m ? e.message.slice(0, 120) : String(e)}`);
-      if (!retryable(e) || attempt === 1) throw e;
+      if (signal?.aborted || !retryable(e) || attempt === 1) throw e;
       await new Promise((r) => setTimeout(r, 700));
     }
   }
@@ -122,7 +122,7 @@ export async function* completeStream(system: string, user: string, sessionId: s
     } catch (e) {
       const m = e instanceof ModelError;
       console.warn(`[ai] stream fail session=${sessionId} attempt=${attempt + 1} yielded=${yielded} code=${m ? e.code : "?"} status=${m ? e.status ?? "-" : "-"} ms=${Date.now() - t0} msg=${m ? e.message.slice(0, 120) : String(e)}`);
-      if (!retryable(e) || attempt === 1 || yielded > 0) throw e;
+      if (signal?.aborted || !retryable(e) || attempt === 1 || yielded > 0) throw e;
       await new Promise((r) => setTimeout(r, 700));
     }
   }
@@ -202,10 +202,5 @@ export async function* completeStream(system: string, user: string, sessionId: s
 }
 
 function combineSignals(a: AbortSignal, b?: AbortSignal): AbortSignal {
-  if (!b) return a;
-  const ctrl = new AbortController();
-  const on = () => ctrl.abort();
-  a.addEventListener("abort", on, { once: true });
-  b.addEventListener("abort", on, { once: true });
-  return ctrl.signal;
+  return b ? AbortSignal.any([a, b]) : a;
 }

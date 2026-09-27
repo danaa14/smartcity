@@ -11,6 +11,8 @@ import type { Answer } from "./types";
  * answered here from the model's own knowledge and labelled as unverified. Cited corpus
  * answers keep their verbatim guarantee; this path never claims a source.
  */
+import { ASSISTANT_GUIDELINES } from "./guidelines";
+
 const PERSONA: Record<Lang, string> = {
   ro: [
     "Ești „Chișinău, pe fir”, asistentul digital al locuitorilor municipiului Chișinău.",
@@ -100,12 +102,12 @@ const BUDGET = 8000;
 
 /** Streams the conversational/general answer token by token. */
 export function streamGeneral(question: string, lang: Lang, history = "", signal?: AbortSignal, doc?: DocContext) {
-  return completeStream(PERSONA[lang], prompt(question, history, lang, doc), sessionOf(question), { maxTokens: BUDGET, signal });
+  return completeStream(PERSONA[lang] + "\n" + ASSISTANT_GUIDELINES, prompt(question, history, lang, doc), sessionOf(question), { maxTokens: BUDGET, signal });
 }
 
 /** Non-streaming variant, for the JSON API and the phone demo. */
 export function askGeneral(question: string, lang: Lang, history = "", signal?: AbortSignal, doc?: DocContext): Promise<string> {
-  return complete(PERSONA[lang], prompt(question, history, lang, doc), sessionOf(question), { maxTokens: BUDGET, signal });
+  return complete(PERSONA[lang] + "\n" + ASSISTANT_GUIDELINES, prompt(question, history, lang, doc), sessionOf(question), { maxTokens: BUDGET, signal });
 }
 
 function sessionOf(question: string): string {
@@ -120,7 +122,9 @@ export function proseAnswer(question: string, lang: Lang, text: string, web?: We
     questionLang: lang,
     kind: "prose",
     prose,
-    unverified: !isSmallTalk(question) && !isRefusal(prose),
+    // A refusal or apology may still contain factual advice. Only an exact
+    // social exchange is exempt from the unverified label.
+    unverified: !(isSmallTalk(question) && isSmallTalk(prose)),
     status: "missing",
     topicId: null,
     topicTitle: null,
@@ -148,8 +152,8 @@ export function proseAnswer(question: string, lang: Lang, text: string, web?: We
  * verify-before-acting warning — they are not factual claims.
  */
 export function isSmallTalk(question: string): boolean {
-  const q = question.trim();
-  return q.length <= 24 && q.split(/\s+/).length <= 3 && !/\d/.test(q);
+  const q = question.toLowerCase().trim().replace(/[!?.,]+$/g, "");
+  return /^(salut|bună|buna|bună ziua|buna ziua|bună seara|buna seara|hei|hello|hi|mersi|mulțumesc|multumesc|merci|pa|привет|здравствуйте|спасибо|добрый день|пока)$/.test(q);
 }
 
 // Allows the pronoun forms the model actually uses: "Nu pot", "Nu te pot", "Nu vă pot ajuta".

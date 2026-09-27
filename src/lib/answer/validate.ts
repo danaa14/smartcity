@@ -31,6 +31,7 @@ function check(c: Claim): string | null {
     if (!doc) return `unknown document ${p.docId}`;
     if (doc.status === "superseded" || doc.status === "abrogated") return `source is ${doc.status}`;
     if (!c.demo && !isCitizenAnswerSource(doc)) return "source is not eligible for citizen answers";
+    if (!squash(cit.quote)) return "empty quote";
     if (!squash(p.text).includes(squash(cit.quote))) return `quote not found in ${cit.passageId}`;
     if (doc.kind === "demo" && !(c.demo && c.text.ro.startsWith("[DEMO]") && c.text.ru.startsWith("[DEMO]")))
       return `demo source used for non-demo claim`;

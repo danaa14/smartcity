@@ -18,7 +18,9 @@
     "ingest:voice-annex": "node scripts/ingest-voice-annex.mjs",
     "test:voice": "node --import tsx scripts/test-voice-retrieval.mjs",
     "ocr:models": "bash scripts/get-ocr-models.sh",
-    "whisper:models": "bash scripts/get-whisper-models.sh"
+    "whisper:models": "bash scripts/get-whisper-models.sh",
+    "test:assistant": "node --conditions=react-server --import tsx scripts/test-assistant-regressions.mjs",
+    "test:voice-ui": "node scripts/test-voice-ui.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",

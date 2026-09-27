@@ -14,7 +14,7 @@ import type { Answer, Claim, ValidationReport } from "./types";
 import type { LlmDraft } from "./llm";
 
 /** Repeated questions resolve instantly: corpus answers only depend on the question, lang and corpus. */
-const CACHE = new Map<string, Promise<Answer | null>>();
+const CACHE = new Map<string, { answer: Answer; expires: number }>();
 const CACHE_MAX = 200;
 type NeedDraft = { need: string; draft: LlmDraft; valid: Claim[]; report: ValidationReport };
 
@@ -26,22 +26,17 @@ type NeedDraft = { need: string; draft: LlmDraft; valid: Claim[]; report: Valida
  * the model only drafts the direct-answer claims, which must pass verbatim-quote validation.
  */
 export function answerWithModel(question: string, lang: Lang, signal?: AbortSignal): Promise<Answer | null> {
-  // Normalised so "Cât costă apa?" and "cat costa apa" share one entry.
+  // Request cancellation belongs to this caller, never a shared in-flight promise.
   const key = `${lang}\0${normalize(question)}`;
   const hit = CACHE.get(key);
-  if (hit) return hit;
-  const run = (async () => {
-    try {
-      const answer = await buildAnswer(question, lang, signal);
+  if (hit && hit.expires > Date.now()) return Promise.resolve(structuredClone({ ...hit.answer, question }));
+  return buildAnswer(question, lang, signal).then((answer) => {
+    if (answer && !signal?.aborted && answer.engine.mode !== "llm-fallback") {
       if (CACHE.size >= CACHE_MAX) CACHE.delete(CACHE.keys().next().value as string);
-      return answer;
-    } catch (e) {
-      CACHE.delete(key);
-      throw e;
+      CACHE.set(key, { answer: structuredClone(answer), expires: Date.now() + 60_000 });
     }
-  })();
-  CACHE.set(key, run);
-  return run;
+    return answer;
+  });
 }
 
 async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): Promise<Answer | null> {
@@ -155,7 +150,7 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
       summary:
         status === "supported"
           ? { ro: `Răspuns susținut de surse: ${valid.length} afirmații verificate.${subject}`, ru: `Ответ подтверждён источниками: ${valid.length} проверенных утверждений.${subjectRu}` }
-          : { ro: `Răspuns parțial: ${valid.length} puncte verificate, ${start.missing.length} lipsesc sau au fost eliminate.${subject}`, ru: `Частичный ответ: ${valid.length} проверенных пунктов, ${start.missing.length} отсутствуют или удалены.${subjectRu}` },
+          : { ro: `Răspuns parțial: ${valid.length} puncte verificate, ${missing.length} lipsesc sau au fost eliminate.${subject}`, ru: `Частичный ответ: ${valid.length} проверенных пунктов, ${missing.length} отсутствуют или удалены.${subjectRu}` },
       validation: { checked: report.checked + start.validation.checked, passed: report.passed + start.validation.passed, dropped: [...report.dropped, ...start.validation.dropped] },
       engine: { ...start.engine, mode: "llm", model: AI.model, label: MODEL_LABEL() },
     };

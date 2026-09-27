@@ -14,7 +14,10 @@ export interface LlmDraft {
 
 const ASPECTS: Aspect[] = ["procedure", "documents", "cost", "time", "contact", "obligation", "validity", "channel"];
 
-const SYSTEM = `You answer questions from residents of Chișinău using ONLY the numbered source passages provided.
+import { ASSISTANT_GUIDELINES } from "./guidelines";
+
+const SYSTEM = `${ASSISTANT_GUIDELINES}
+You answer questions from residents of Chișinău using ONLY the numbered source passages provided.
 Rules:
 - Every claim must be supported by an EXACT, verbatim, contiguous quote copied character-for-character from one of the passages (keep diacritics and punctuation). Never paraphrase inside "quote".
 - The claim must restate only what its cited quote explicitly says. Do not infer, combine unrelated facts, or add context from memory. If the connection is not clear from the quote itself, put that information need under "missing".
