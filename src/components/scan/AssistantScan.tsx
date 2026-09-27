@@ -53,7 +53,7 @@ export function AssistantScan() {
     }
     setProgress({ label: { ro: "Încarc modelul local de protecție a datelor…", ru: "Загружаю локальную модель защиты данных…" }, pct: 0 });
     try {
-      const model = await detectModel(t0, (p) => setProgress({ label: { ro: "Descarc modelul local (~280 MB, o singură dată, apoi rămâne în browser)…", ru: "Скачиваю локальную модель (~280 МБ, один раз, затем она остаётся в браузере)…" }, pct: p }));
+      const model = await detectModel(t0, (p) => setProgress({ label: { ro: "Descarc modelul local (~104 MB, o singură dată, apoi rămâne în browser)…", ru: "Скачиваю локальную модель (~104 МБ, один раз, затем она остаётся в браузере)…" }, pct: p }));
       setSpans((cur) => mergeSpans([...rules, ...model, ...cur.filter((s) => s.source === "user")], t0));
     } catch (e) {
       console.error("local PII model failed:", e);
@@ -194,7 +194,7 @@ export function AssistantScan() {
           </section>
           <aside className="space-y-3">
             <Notice tone="ok" title={t({ ro: "Ce rămâne pe dispozitiv", ru: "Что остаётся на устройстве" })}>
-              {t({ ro: "Imaginea, textul complet și datele personale nu părăsesc browserul. Recunoașterea (Tesseract) și detectarea datelor personale (model multilingv) rulează local, inclusiv pe telefon. Modelul (~280 MB) se descarcă o singură dată de pe Hugging Face — fără niciun conținut din document.", ru: "Изображение, полный текст и личные данные не покидают браузер. Распознавание (Tesseract) и поиск личных данных (многоязычная модель) работают локально, в том числе на телефоне. Модель (~280 МБ) скачивается один раз с Hugging Face — без какого-либо содержимого документа." })}
+              {t({ ro: "Imaginea și textul complet rămân în browser. Pentru documente, detectarea datelor personale folosește modelul multilingv local inclusiv pe telefon. Modelul (~104 MB) se descarcă o singură dată de pe Hugging Face; verificați și previzualizarea înainte de trimitere.", ru: "Изображение и полный текст остаются в браузере. Для документов поиск личных данных использует локальную многоязычную модель, в том числе на телефоне. Модель (~104 МБ) загружается один раз с Hugging Face; перед отправкой проверьте предварительный просмотр." })}
             </Notice>
             <div className="card space-y-2 p-3">
               <p className="text-sm font-semibold">{t({ ro: "Nu aveți un document la îndemână?", ru: "Нет документа под рукой?" })}</p>
