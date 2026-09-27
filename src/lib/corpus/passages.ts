@@ -1,4 +1,7 @@
 import annexIngest from "../../../corpus/annex-ingest.json";
+import neighborhoodSources from "../../../corpus/neighborhood-sources.json";
+import supplemental from "../../../corpus/official-supplement.json";
+import actionGuides from "../../../corpus/action-guides.json";
 import voiceAnnex from "../../../corpus/voice-annex-passages.json";
 import type { Passage } from "./types";
 
@@ -465,6 +468,9 @@ export const PASSAGES: Passage[] = [
 ];
 
 PASSAGES.push(...(annexIngest.passages as Passage[]));
+PASSAGES.push(...(neighborhoodSources.passages as Passage[]));
+PASSAGES.push(...(supplemental.passages as Passage[]));
+PASSAGES.push(...(actionGuides.passages as Passage[]));
 PASSAGES.push(...(voiceAnnex as { page: number; section: string; text: string }[]).map((item, index) => ({
   id: `voice-annex-source-list#p-${index + 1}`,
   docId: "voice-annex-source-list",

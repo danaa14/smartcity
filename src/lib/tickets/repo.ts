@@ -1,7 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { collection, UPLOAD_DIR } from "../store/db";
 import type { Ticket, TicketMedia } from "./types";
 
@@ -10,7 +10,7 @@ export const tickets = collection<Ticket>("tickets");
 export function newTicketId(): string {
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  return `DEMO-${ymd}-${randomBytes(3).toString("hex").toUpperCase()}`;
+  return `SES-${ymd}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 const ALLOWED: Record<string, TicketMedia["kind"]> = {

@@ -24,7 +24,7 @@ type Stage = "ocr" | "redact" | "sending" | "result";
  * browser; the redaction gate is the one step the user cannot skip, because confirming it
  * is what authorises the redacted text to leave the device.
  */
-export function DocumentTurn({ file, goal, onReady }: { file: File; goal: string; onReady: (ctx: DocContext) => void }) {
+export function DocumentTurn({ file, name, goal, onReady }: { file: File; name: string; goal: string; onReady: (ctx: DocContext) => void }) {
   const { lang, t } = useLang();
   const [stage, setStage] = useState<Stage>("ocr");
   const [pages, setPages] = useState<OcrPage[]>([]);
@@ -119,7 +119,7 @@ export function DocumentTurn({ file, goal, onReady }: { file: File; goal: string
       const doc = j as DocReview;
       setReview(doc);
       setStage("result");
-      onReady({ name: file.name, text: redacted, docType: doc.docType[lang], summary: doc.summary[lang] });
+      onReady({ name, text: redacted, docType: doc.docType[lang], summary: doc.summary[lang] });
     } catch (e) {
       const code = (e as Error).message;
       setStage("redact");

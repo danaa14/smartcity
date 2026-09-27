@@ -12,6 +12,7 @@ import { useConversations } from "../ConversationProvider";
 import type { SavedTurn } from "@/lib/chat/types";
 import { VoiceCall } from "./VoiceCall";
 import { humanize } from "@/lib/answer/tone";
+import { detectRules, detectModel, mergeSpans, redactText } from "@/lib/scan/pii";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
 type DocTurn = { kind: "doc"; id: number; file?: File; name?: string; goal: string; ctx?: DocContext };
@@ -28,6 +29,12 @@ type ServerEvent =
   | { type: "chunk"; text: string }
   | { type: "answer"; answer: Answer }
   | { type: "error"; message: string };
+
+async function privateText(text: string): Promise<string> {
+  if (!text.trim()) return text;
+  const spans = mergeSpans([...detectRules(text), ...await detectModel(text)], text);
+  return redactText(text, spans);
+}
 
 const FAQ = [
   { q: { ro: "Cu ce mă poate ajuta pe fir?", ru: "Чем поможет «pe fir»?" }, a: { ro: "Găsiți informații despre contractul de apă, petiții, deșeuri și cereri pentru arbori. Fiecare răspuns are surse pe care le puteți verifica. Puteți și scana un document sau pregăti o sesizare demo.", ru: "Здесь можно найти сведения о договорах на воду, петициях, вывозе мусора и заявлениях по деревьям. У ответов есть проверяемые источники. Также можно сканировать документ или подготовить демо-обращение." } },
@@ -66,6 +73,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const [sheet, setSheet] = useState<Sheet>("faq");
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [validation, setValidation] = useState(false);
+  const [privacyError, setPrivacyError] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [fileErr, setFileErr] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -83,24 +91,38 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
 
   const ask = useCallback(async (question: string, retryId?: number) => {
     if (pending.current) return;
-    const text = question.trim();
-    if (!text) { setValidation(true); input.current?.focus(); return; }
+    const original = question.trim();
+    if (!original) { setValidation(true); input.current?.focus(); return; }
     pending.current = true;
     setBusy(true);
+    setPrivacyError(false);
+    // Created before the privacy check, which can take seconds while the local model loads:
+    // leaving the chat meanwhile must cancel the question instead of sending it afterwards.
+    const abort = new AbortController();
+    controller.current = abort;
+    let text = original;
+    try {
+      text = await privateText(original);
+    } catch {
+      setPrivacyError(true);
+      pending.current = false;
+      setBusy(false);
+      return;
+    }
+    if (abort.signal.aborted) { pending.current = false; return; }
     setValidation(false);
     setDraft("");
     const id = retryId ?? ++sequence.current;
     const fresh: AskTurn = { kind: "ask", id, question: text };
     setTurns((prev) => retryId === undefined ? [...prev, fresh] : prev.map((turn) => turn.id === id ? fresh : turn));
-    const abort = new AbortController();
-    controller.current = abort;
     const timeout = setTimeout(() => abort.abort(), 100000);
     const patch = (fields: Partial<AskTurn>) => setTurns((prev) => prev.map((turn) => (turn.id === id && turn.kind === "ask" ? { ...turn, ...fields } : turn)));
     try {
+      const safeHistory = await Promise.all(historyRef.current.map(async (turn) => ({ ...turn, content: await privateText(turn.content) })));
       const response = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ question: text, lang: selectedLang(lang), history: historyRef.current, document: docRef.current ? { name: docRef.current.name, text: docRef.current.text } : undefined }),
+        body: JSON.stringify({ question: text, lang: selectedLang(lang), history: safeHistory, document: docRef.current ? { name: docRef.current.name, text: docRef.current.text } : undefined }),
         signal: abort.signal,
       });
       if (!response.ok || !response.body) throw new Error("request_failed");
@@ -149,14 +171,21 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   }, [lang]);
 
   /** Whatever is already typed becomes the review goal, so "verifică dacă e corect" + attach reads as one act. */
-  const attach = useCallback((file: File | null | undefined) => {
+  const attach = useCallback(async (file: File | null | undefined) => {
     if (!file) return;
     if (file.size > MAX_BYTES) { setFileErr(true); return; }
-    const goal = draft.trim().slice(0, 300);
+    let goal: string;
+    let name: string;
+    try {
+      [goal, name] = await Promise.all([privateText(draft.trim().slice(0, 300)), privateText(file.name)]);
+    } catch {
+      setPrivacyError(true);
+      return;
+    }
     setDraft("");
     setValidation(false);
     setFileErr(false);
-    setTurns((prev) => [...prev, { kind: "doc", id: ++sequence.current, file, goal }]);
+    setTurns((prev) => [...prev, { kind: "doc", id: ++sequence.current, file, name, goal }]);
   }, [draft]);
 
   useEffect(() => {
@@ -178,7 +207,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     if (busy || !turns.length) return;
     const saved: SavedTurn[] = turns.flatMap((turn): SavedTurn[] => turn.kind === "ask"
       ? [{ kind: "ask", id: turn.id, question: turn.question, answer: turn.answer, failed: turn.failed || (!turn.answer ? true : undefined) }]
-      : turn.ctx ? [{ kind: "doc", id: turn.id, name: turn.file?.name ?? turn.name ?? "Document", goal: turn.goal, ctx: turn.ctx }] : []);
+      : turn.ctx ? [{ kind: "doc", id: turn.id, name: turn.name ?? "Document", goal: turn.goal, ctx: turn.ctx }] : []);
     save(saved);
   }, [turns, busy, save]);
 
@@ -233,11 +262,11 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           <div className="conversation">
             <h1 className="sr-only">{t({ ro: "Conversația ta", ru: "Ваш диалог" })}</h1>
             {turns.map((turn, index) => turn.kind === "doc" ? (
-              <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={(turn.file?.name ?? turn.name)}>
-                <div className="user-message user-file"><Icon name="document" /><span>{(turn.file?.name ?? turn.name)}</span></div>
+              <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={turn.name}>
+                <div className="user-message user-file"><Icon name="document" /><span>{turn.name}</span></div>
                 {turn.goal && <div className="user-message">{turn.goal}</div>}
                 <div className="assistant-label"><span className="assistant-dot" />pe fir</div>
-                {turn.file ? <DocumentTurn file={turn.file} goal={turn.goal} onReady={(ctx) => setTurns((prev) => prev.map((x) => (x.id === turn.id && x.kind === "doc" ? { ...x, ctx } : x)))} /> : <div className="chat-answer"><p>{turn.ctx?.summary}</p></div>}
+                {turn.file ? <DocumentTurn file={turn.file} name={turn.name ?? "Document"} goal={turn.goal} onReady={(ctx) => setTurns((prev) => prev.map((x) => (x.id === turn.id && x.kind === "doc" ? { ...x, ctx } : x)))} /> : <div className="chat-answer"><p>{turn.ctx?.summary}</p></div>}
               </section>
             ) : (
               <section key={turn.id} className="chat-turn" data-latest={index === turns.length - 1 ? "true" : undefined} aria-label={turn.question}>
@@ -270,8 +299,9 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
+        {privacyError && <p className="composer-error" role="alert">{t({ ro: "Nu am putut verifica datele personale. Mesajul nu a fost trimis. Încearcă din nou.", ru: "Не удалось проверить личные данные. Сообщение не отправлено. Повторите попытку." })}</p>}
         {fileErr && <p className="composer-error" role="alert">{t({ ro: "Fișierul depășește 10 MB. Încearcă o fotografie mai mică.", ru: "Файл больше 10 МБ. Попробуйте фото меньшего размера." })}</p>}
-        <p id="chat-hint" className="composer-hint">{t({ ro: "Răspunsuri cu surse. Fără date personale în mesaje.", ru: "Ответы с источниками. Не указывайте личные данные." })}</p>
+        <p id="chat-hint" className="composer-hint">{t({ ro: "Datele detectate sunt mascate înainte de trimitere. Evită totuși datele sensibile: detectarea poate rata unele.", ru: "Обнаруженные данные скрываются перед отправкой. Не вводите конфиденциальные данные: некоторые могут быть пропущены." })}</p>
         <p className="sr-only" role="status">{busy ? t({ ro: "Se caută răspunsul.", ru: "Идёт поиск ответа." }) : settled(turns.at(-1)) ? t({ ro: "Răspunsul este gata.", ru: "Ответ готов." }) : ""}</p>
       </div>
 

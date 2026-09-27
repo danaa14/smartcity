@@ -96,7 +96,7 @@ export function PhoneClient() {
       push({ who: "caller", text: callerLines[1] });
       push({
         who: "bot",
-        text: L({ ro: `Citesc înapoi: categorie — ${cat.label.ro}; loc — „${callerLines[1]}”; descriere — „${callerLines[0]}”. Nu vă înregistrez numărul de telefon. Tichetul va fi DEMO, salvat local, și NU ajunge la Primărie. Confirmați?`, ru: `Зачитываю: категория — ${cat.label.ru}; место — «${callerLines[1]}»; описание — «${callerLines[0]}». Ваш номер телефона не сохраняется. Заявка будет DEMO, сохранена локально, и НЕ попадёт в Примэрию. Подтверждаете?` }),
+        text: L({ ro: `Citesc înapoi: categorie — ${cat.label.ro}; loc — „${callerLines[1]}”; descriere — „${callerLines[0]}”. Nu vă înregistrez numărul de telefon. Sesizarea va fi salvată pe serverul prototipului și nu ajunge la Primărie. Confirmați?`, ru: `Зачитываю: категория — ${cat.label.ru}; место — «${callerLines[1]}»; описание — «${callerLines[0]}». Ваш номер телефона не сохраняется. Обращение будет сохранено на сервере прототипа и не попадёт в Примэрию. Подтверждаете?` }),
         note: t({ ro: "Citire înapoi înainte de confirmare", ru: "Зачитывание перед подтверждением" }),
       });
       push({ who: "caller", text: callerLines[2] });
@@ -112,7 +112,7 @@ export function PhoneClient() {
       const j = await r.json();
       if (r.ok) {
         setTicketId(j.id);
-        push({ who: "bot", text: L({ ro: `Am creat tichetul demo ${j.id}. Repet: nu a fost trimis Primăriei. `, ru: `Создана демо-заявка ${j.id}. Повторяю: она не отправлена в Примэрию. ` }) + L(SAY.bye) });
+        push({ who: "bot", text: L({ ro: `Sesizarea ${j.id} a fost înregistrată pe server. Personalul autorizat o poate consulta în back office; nu a fost trimisă Primăriei. `, ru: `Обращение ${j.id} сохранено на сервере. Уполномоченные сотрудники могут просмотреть его в бэк-офисе; в Примэрию оно не отправлено. ` }) + L(SAY.bye) });
       } else {
         push({ who: "bot", text: L({ ro: "Nu am putut salva tichetul. Vă rog sunați la Ghișeul Unic: +373 22 20 15 05.", ru: "Не удалось сохранить заявку. Позвоните в Единое окно: +373 22 20 15 05." }) });
       }
@@ -191,7 +191,7 @@ export function PhoneClient() {
           )}
           {ticketId && (
             <p className="mt-3">
-              <Link href={`/tichet/${ticketId}`} className="btn btn-secondary">{t({ ro: "Deschide tichetul demo", ru: "Открыть демо-заявку" })} {ticketId}</Link>
+              <p className="btn btn-secondary">{t({ ro: "Numărul sesizării", ru: "Номер обращения" })}: {ticketId}</p>
             </p>
           )}
         </section>

@@ -2,10 +2,12 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { tickets } from "@/lib/tickets/repo";
 import { UPLOAD_DIR } from "@/lib/store/db";
+import { staffSession } from "@/lib/staff/auth";
 
 export const runtime = "nodejs";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string; file: string }> }) {
+  if (await staffSession() !== "ok") return new Response("unauthorized", { status: 401, headers: { "cache-control": "no-store" } });
   const { id, file } = await ctx.params;
   const t = await tickets.get(id);
   const m = t?.media.find((x) => x.file === path.basename(file));

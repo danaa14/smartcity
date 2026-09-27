@@ -26,7 +26,7 @@ async function page(lang = "ro") {
   const aborted = [];
   p.on("requestfailed", (r) => r.url().includes("/api/ask") && aborted.push(r.failure()?.errorText));
   await p.goto(`${BASE}/intreaba?q=${encodeURIComponent(WATER)}`);
-  const answered = await p.waitForSelector("[id$='-ans-h']", { timeout: 20000 }).then(() => true, () => false);
+  const answered = await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 }).then(() => true, () => false);
   check("startup: ?q= question answered", answered);
   check("startup: no cancelled request", aborted.length === 0, JSON.stringify(aborted));
   check("startup: no error box", (await p.locator(".chat-error").count()) === 0);
@@ -47,7 +47,7 @@ async function page(lang = "ro") {
   const sent = [];
   p.on("request", (r) => r.url().includes("/api/ask") && sent.push(JSON.parse(r.postData() ?? "{}").lang));
   await p.goto(`${BASE}/intreaba?q=${encodeURIComponent("Какие документы нужны для договора на воду в квартире?")}`);
-  await p.waitForSelector("[id$='-ans-h']", { timeout: 20000 });
+  await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 });
   check("language: link question sent in the selected language", sent.length === 1 && sent[0] === "ru", JSON.stringify(sent));
   const txt = await p.locator(".chat-answer").last().innerText();
   check("language: RU question answered from the sources, in RU", txt.includes("Подтверждено источниками") && !txt.includes("Язык изменён"));
@@ -83,10 +83,14 @@ async function page(lang = "ro") {
   await p.keyboard.press("Enter");
   await p.waitForTimeout(1000);
   check("unmount: staying in the chat does not cancel", !(await p.evaluate(() => window.__askAborted)));
+  let completed = 0;
+  p.on("requestfinished", (r) => r.url().includes("/api/ask") && completed++);
   await p.locator('a[href="/raporteaza"]').first().click();
   await p.waitForURL("**/raporteaza");
-  await p.waitForTimeout(500);
-  check("unmount: leaving the chat cancels the request", await p.evaluate(() => window.__askAborted));
+  // The question is either still in the on-device privacy check (then it is never sent) or
+  // already in flight (then it is aborted). Either way it must never complete.
+  await p.waitForTimeout(8000);
+  check("unmount: leaving the chat cancels the question", completed === 0, `${completed} completed`);
   await c.close();
 }
 
@@ -97,7 +101,7 @@ async function page(lang = "ro") {
   await p.waitForLoadState("networkidle");
   await p.fill("#chat-message", "Cum depun o petiție?");
   await p.keyboard.press("Enter");
-  await p.waitForSelector("[id$='-ans-h']", { timeout: 20000 });
+  await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 });
   await p.waitForTimeout(300);
   await p.fill("#chat-message", "ciornă nesalvată");
   await p.getByRole("button", { name: "Deschide meniul" }).click();
@@ -122,14 +126,14 @@ for (const [lang, brief, gapTitle, claim] of [
   await p.waitForLoadState("networkidle");
   await p.fill("#chat-message", WATER);
   await p.keyboard.press("Enter");
-  await p.waitForSelector("[id$='-ans-h']", { timeout: 20000 });
+  await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 });
   let txt = await p.locator(".chat-answer").last().innerText();
   check(`wording ${lang}: brief heading "${brief}"`, txt.includes(brief));
   check(`wording ${lang}: claim states the fact, in ${lang}`, txt.includes(claim));
   check(`wording ${lang}: no page/corpus attribution`, !/marcată pe pagină|отмечена на странице|Corpusul|В корпусе/.test(txt));
   await p.fill("#chat-message", lang === "ro" ? "Cum înscriu copilul la grădiniță?" : "Как записать ребёнка в детский сад?");
   await p.keyboard.press("Enter");
-  await p.waitForFunction((n) => document.querySelectorAll("[id$='-ans-h']").length >= n, 2, { timeout: 20000 });
+  await p.waitForFunction((n) => document.querySelectorAll("[id$='-ans-h']").length >= n, 2, { timeout: 120000 });
   txt = await p.locator(".chat-answer").last().innerText();
   check(`wording ${lang}: gap section "${gapTitle}"`, txt.includes(gapTitle));
   await p.context().close();
@@ -142,7 +146,7 @@ for (const [lang, brief, gapTitle, claim] of [
   await p.waitForLoadState("networkidle");
   await p.fill("#chat-message", WATER);
   await p.keyboard.press("Enter");
-  await p.waitForSelector("[id$='-ans-h']", { timeout: 20000 });
+  await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 });
   const req = p.waitForRequest((r) => r.url().includes("/api/ask") && r.method() === "POST");
   await p.fill("#chat-message", "Și cât durează?");
   await p.keyboard.press("Enter");
@@ -172,7 +176,7 @@ for (const [lang, brief, gapTitle, claim] of [
   await p.waitForLoadState("networkidle");
   await p.fill("#chat-message", "Ce acte trebuie?");
   await p.keyboard.press("Enter");
-  const streaming = await p.waitForSelector(".prose-stream", { timeout: 10000 }).then(() => p.locator(".prose-stream").innerText(), () => "");
+  const streaming = await p.waitForSelector(".prose-stream", { timeout: 120000 }).then(() => p.locator(".prose-stream").innerText(), () => "");
   check("streaming: robotic opener never shown", streaming.length > 0 && !/Conform Anexei|\[1\]/.test(streaming), JSON.stringify(streaming));
   check("streaming: text starts naturally", /^Aveți nevoie/.test(streaming));
   await p.context().close();
@@ -187,7 +191,7 @@ for (const [lang, brief, gapTitle, claim] of [
   await p.waitForLoadState("networkidle");
   await p.fill("#chat-message", "Cât costă apa?");
   await p.keyboard.press("Enter");
-  await p.waitForSelector(".chat-error", { timeout: 10000 });
+  await p.waitForSelector(".chat-error", { timeout: 120000 });
   const err = await p.locator(".chat-error").innerText();
   check("error: friendly apology with retry", err.includes("Îmi pare rău") && err.includes("Încearcă din nou"));
   await p.context().close();

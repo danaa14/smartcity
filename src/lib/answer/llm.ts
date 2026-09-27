@@ -50,9 +50,9 @@ function parseJson(text: string): unknown {
 }
 
 /** Asks the model to draft claims over candidate passages. Output is untrusted until validated. */
-export async function draftWithModel(question: string, candidateIds: string[], signal?: AbortSignal): Promise<LlmDraft> {
+export async function draftWithModel(question: string, candidateIds: string[], signal?: AbortSignal, agentId = 0): Promise<LlmDraft> {
   const ids = candidateIds.filter((id) => PASSAGE_BY_ID.has(id)).slice(0, 8);
-  const session = "pefir-" + createHash("sha256").update(question).digest("hex").slice(0, 16);
+  const session = "pefir-" + createHash("sha256").update(`${question}\0${agentId}`).digest("hex").slice(0, 16);
   // Reasoning tokens are drawn from this budget before the JSON is written; 2500 left the
   // model cutting off mid-object on multi-claim answers.
   const raw = await complete(SYSTEM, `Question: ${question}\n\nPassages:\n${formatPassages(ids)}`, session, { maxTokens: 8000, signal });

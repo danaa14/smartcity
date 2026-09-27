@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { reviewDocument } from "@/lib/scan/review";
 import { AI } from "@/lib/ai/config";
 import { ModelError } from "@/lib/ai/client";
+import { detectRules } from "@/lib/scan/pii";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   if (!text) return NextResponse.json({ error: "empty" }, { status: 400 });
   if (b?.confirmed !== true) return NextResponse.json({ error: "not_confirmed" }, { status: 400 });
   if (LEAKS.some((re) => re.test(text))) return NextResponse.json({ error: "pii_leak" }, { status: 422 });
+  if (detectRules((b.goal ?? "").slice(0, 300)).length) return NextResponse.json({ error: "pii_leak" }, { status: 422 });
   if (!AI.enabled) return NextResponse.json({ error: "ai_disabled" }, { status: 503 });
   try {
     const review = await reviewDocument(text, (b.goal ?? "").slice(0, 300));

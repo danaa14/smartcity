@@ -14,7 +14,7 @@ async function ctx(mobile = false, lang = "ro") {
   p.on("console", (m) => m.type() === "error" && p.errs.push(m.text()));
   return p;
 }
-const ask = async (p, q) => { await p.goto(`${BASE}/intreaba?q=${encodeURIComponent(q)}`); await p.waitForSelector("[id$='-ans-h']", { timeout: 15000 }); };
+const ask = async (p, q) => { await p.goto(`${BASE}/intreaba?q=${encodeURIComponent(q)}`); await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 }); };
 
 // The answers live in the chat (/intreaba renders ChatClient with compact answers).
 const answerText = (p) => p.locator(".chat-answer").last().innerText();
@@ -90,7 +90,7 @@ await p.waitForLoadState("networkidle");
 await p.focus("#chat-message");
 await p.keyboard.press("Enter");
 check("empty question shows alert", (await p.locator("#chat-validation[role=alert]").count()) === 1);
-check("keyboard: Enter submits question", await (async () => { await p.fill("#chat-message", "Cum depun o petiție la primărie?"); await p.press("#chat-message", "Enter"); await p.waitForSelector("[id$='-ans-h']"); return true; })());
+check("keyboard: Enter submits question", await (async () => { await p.fill("#chat-message", "Cum depun o petiție la primărie?"); await p.press("#chat-message", "Enter"); await p.waitForSelector("[id$='-ans-h']", { timeout: 120000 }); return true; })());
 
 // Mobile: citation opens as dialog, focus returns
 const m = await ctx(true);
@@ -146,8 +146,13 @@ check("scan: not presented as legal advice", scanTxt.includes("nu este consultan
 await p.screenshot({ path: ".data/shots/e2e-scan.png", fullPage: true });
 await scanCtx.close();
 
-// Report flow on mobile: photo → title + service → review → demo ticket (never sent) → delete
+// Report flow on mobile: photo → title + service + description → review → registered on the
+// server (institutions not connected) → ticket page → delete
 const PHOTO = "public/samples/contract-exemplu.jpg";
+const describe = async (pg, text) => {
+  if (!(await pg.locator("#report-message").count())) await pg.getByRole("button", { name: /Mesaj/ }).first().click();
+  await pg.fill("#report-message", text);
+};
 const r = await ctx(true);
 await r.goto(`${BASE}/raporteaza`);
 await r.evaluate(() => localStorage.clear());
@@ -158,23 +163,25 @@ await r.getByRole("button", { name: /Mai departe/ }).click();
 check("report: title required", (await r.getByText("Dă-i problemei un titlu").count()) > 0);
 await r.fill("#report-title", "Groapă mare pe trotuar");
 await r.getByRole("button", { name: /Mai departe/ }).click();
+check("report: description required", (await r.getByText("de cel puțin 10 caractere").count()) > 0);
+await describe(r, "Groapă adâncă lângă stația de autobuz, periculoasă seara.");
+await r.getByRole("button", { name: /Mai departe/ }).click();
 check("report: service required", (await r.getByText("Alege serviciul").count()) > 0);
 await r.locator("input[name=service]").first().check({ force: true });
 await r.fill("#report-location", "bd. Exemplu 1");
 await r.getByRole("button", { name: /Mai departe/ }).click();
 await r.waitForSelector("text=SESIZAREA TA");
 check("report: review shows what will be saved", (await r.locator("main").innerText()).includes("Groapă mare pe trotuar"));
-await r.getByRole("button", { name: /Trimite sesizarea demo/ }).click();
-await r.waitForURL(/\/tichet\/DEMO-/);
-const tt = await r.locator("main").innerText();
-check("ticket: unique DEMO id", /DEMO-\d{8}-[0-9A-F]{6}/.test(r.url()));
-check("ticket: honest 'not sent' status", tt.includes("Nu a fost trimisă"));
-check("ticket: no fake progress", tt.includes("Nicio echipă nu a fost anunțată"));
+await r.getByRole("button", { name: /Trimite sesizarea/ }).click();
+await r.waitForSelector("text=SESIZARE ÎNREGISTRATĂ", { timeout: 15000 });
+const done = await r.locator("main").innerText();
+const ticketId = done.match(/SES-\d{8}-[0-9A-F]{8}/)?.[0];
+check("ticket: unique id shown", !!ticketId, ticketId);
+check("ticket: honest 'not connected' notice", done.includes("nu sunt conectate"));
 await r.screenshot({ path: ".data/shots/e2e-ticket-mobile.png", fullPage: true });
-await r.getByRole("button", { name: /Șterge tichetul și fișierele/ }).click();
-await r.getByRole("button", { name: "Da, șterge" }).click();
-await r.waitForSelector("text=au fost șterse");
-check("ticket: deletable", true);
+// Tickets are kept on the server for staff only: a resident's link shows the staff gate.
+await r.goto(`${BASE}/tichet/${ticketId}`);
+check("ticket: page closed to residents", (await r.locator(".bo-gate").count()) === 1);
 
 // Report network failure keeps the draft
 const f = await ctx();
@@ -184,9 +191,10 @@ await f.reload();
 await f.locator(".camera-alternative input[type=file]").setInputFiles(PHOTO);
 await f.fill("#report-title", "Bec stradal ars de o săptămână");
 await f.locator("input[name=service]").first().check({ force: true });
+await describe(f, "Becul de pe stâlpul din fața blocului nu mai arde.");
 await f.getByRole("button", { name: /Mai departe/ }).click();
 await f.route("**/api/tickets", (route) => route.abort());
-await f.getByRole("button", { name: /Trimite sesizarea demo/ }).click();
+await f.getByRole("button", { name: /Trimite sesizarea/ }).click();
 await f.waitForSelector("text=Nu am putut salva sesizarea");
 check("report: failed save keeps the user on the review", (await f.locator("main").innerText()).includes("Bec stradal ars"));
 await f.unroute("**/api/tickets");
@@ -225,6 +233,15 @@ if (!STAFF_PASSWORD) {
 
   await p.getByRole("button", { name: /Dovezi/ }).first().click();
   check("staff: recheck queue rendered", (await p.locator(".bo-rows .bo-row").count()) >= 1);
+
+  await p.goto(`${BASE}/tichet/${ticketId}`);
+  const tt = await p.locator("main").innerText();
+  check("ticket: staff page says it was not sent", tt.includes("Nu a fost trimisă"));
+  check("ticket: no fake progress", tt.includes("nimeni nu a fost anunțat"));
+  await p.getByRole("button", { name: /Șterge tichetul și fișierele/ }).click();
+  await p.getByRole("button", { name: "Da, șterge" }).click();
+  await p.waitForSelector("text=au fost șterse");
+  check("ticket: deletable by staff", true);
 }
 
 // Keyboard: skip link + focus visible
@@ -244,8 +261,9 @@ await p.waitForSelector("text=Nu am în surse", { timeout: 15000 });
 check("phone: missing → human contact suggestion", (await p.getByText("+373 22 20 15 05").count()) > 0);
 await p.getByLabel(/Sesizare vocală/).check();
 await p.getByRole("button", { name: /Pornește apelul demo/ }).click();
-await p.waitForSelector("text=Deschide tichetul demo", { timeout: 15000 });
+await p.waitForSelector("text=Numărul sesizării", { timeout: 30000 });
 check("phone: read-back before confirmation", (await p.getByText("Citesc înapoi").count()) > 0);
+check("phone: says the report was not sent to the Primărie", (await p.getByText(/nu a fost trimisă Primăriei/).count()) > 0);
 
 // Home 5-second test on mobile: ask input above fold
 const h = await ctx(true);

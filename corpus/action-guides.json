@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-09-27",
+  "captureMethod": "Selected excerpts from the linked official pages and ANSA service document, checked on 2026-09-27. Raw files are selected excerpts, not full page snapshots.",
+  "docs": [
+    {
+      "id": "guide-asp-business",
+      "kind": "real",
+      "title": "Înregistrează afacerea",
+      "url": "https://www.asp.gov.md/ro/servicii/persoane-juridice/inregistrare-afacere/211-1",
+      "publisher": "Agenția Servicii Publice",
+      "annexCategory": null,
+      "annexStartUrl": null,
+      "lang": "ro",
+      "docType": { "ro": "Pagină de serviciu", "ru": "Страница услуги" },
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": { "ro": "Extras selectiv verificat la 27.09.2026; cerințele se confirmă pe pagina oficială.", "ru": "Выборочная выписка проверена 27.09.2026; требования нужно уточнить на официальной странице." },
+      "rawFile": "corpus/raw/guide-asp-business.txt"
+    },
+    {
+      "id": "guide-chisinau-trade",
+      "kind": "real",
+      "title": "Depunerea notificărilor în comerț",
+      "url": "https://comert.chisinau.md/",
+      "publisher": "Direcția comerț, prestări servicii și alimentație publică a municipiului Chișinău",
+      "annexCategory": "Comerț",
+      "annexStartUrl": "https://comert.chisinau.md/",
+      "lang": "ro",
+      "docType": { "ro": "Pagină de serviciu", "ru": "Страница услуги" },
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": { "ro": "Extras selectiv verificat la 27.09.2026; modalitatea de depunere se confirmă pe pagina oficială.", "ru": "Выборочная выписка проверена 27.09.2026; способ подачи нужно уточнить на официальной странице." },
+      "rawFile": "corpus/raw/guide-chisinau-trade.txt"
+    },
+    {
+      "id": "guide-ansa-food",
+      "kind": "real",
+      "title": "Înregistrarea în domeniul siguranței alimentelor — procedura ANSA",
+      "url": "https://www.ansa.gov.md/sites/default/files/2024-11/Ordin%20540%20cu%20Anexa_compressed%20%282%29.pdf",
+      "publisher": "Agenția Națională pentru Siguranța Alimentelor",
+      "annexCategory": null,
+      "annexStartUrl": null,
+      "lang": "ro",
+      "docType": { "ro": "Procedură oficială PDF", "ru": "Официальная процедура PDF" },
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": { "ro": "Extras selectiv din procedura oficială; confirmați în formular condițiile aplicabile localului dvs.", "ru": "Выборочная выписка из официальной процедуры; уточните условия для вашего заведения в форме заявки." },
+      "rawFile": "corpus/raw/guide-ansa-food.txt"
+    }
+  ],
+  "passages": [
+    {
+      "id": "guide-asp-business#service",
+      "docId": "guide-asp-business",
+      "locator": { "ro": "Introducerea serviciului", "ru": "Описание услуги" },
+      "lang": "ro",
+      "text": "Serviciul este destinat înregistrării de stat a organizațiilor comerciale în Registrul de stat al unităților de drept (RSUD), pentru inițierea activității legale."
+    },
+    {
+      "id": "guide-chisinau-trade#online",
+      "docId": "guide-chisinau-trade",
+      "locator": { "ro": "Informații utile — depunere notificări", "ru": "Полезная информация — подача уведомлений" },
+      "lang": "ro",
+      "text": "Notificările privind inițierea/modificarea/încetarea activității de comerț se depun: în regim on-line , accesând : https://actpermisiv.gov.md/#/ep/permit/23 , sau off-line (fizic) la ghișeul Direcției (șos. Hâncești, 53A), în baza unei programări prealabile, accesând: https://comert.chisinau.md/programare-online/solicitant-nou/"
+    },
+    {
+      "id": "guide-ansa-food#apply",
+      "docId": "guide-ansa-food",
+      "locator": { "ro": "Pagina 112 din PDF, Pasul 1 — depunerea cererii", "ru": "Страница 112 PDF, шаг 1 — подача заявления" },
+      "lang": "ro",
+      "text": "Pasul 1. Depunerea cererii Solicitantul depune cererea prin următoarele modalități: 1) apăsarea butonului Solicită și accesarea https://actpermisiv.gov.md/#/ep/permit/124; 2) la ghișeul subdiviziunilor teritoriale pentru siguranța alimentelor în raza căruia își desfășoară activitatea."
+    }
+  ]
+}

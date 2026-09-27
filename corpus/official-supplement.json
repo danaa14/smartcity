@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-09-27",
+  "captureMethod": "Selected visible text transcribed from official source pages surfaced by web retrieval; whitespace and time notation normalized. Raw files contain these selected excerpts, not complete page captures.",
+  "docs": [
+    {
+      "id": "official-ciocana-audiente",
+      "kind": "real",
+      "title": "Programul de audienţă a cetăţenilor",
+      "url": "https://ciocana.md/orarul-audientelor",
+      "publisher": "Pretura sectorului Ciocana",
+      "annexCategory": "Administrație de sector",
+      "annexStartUrl": "https://ciocana.md/",
+      "lang": "ro",
+      "docType": {"ro": "Program de audiențe", "ru": "График приема граждан"},
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": {"ro": "Extras selectiv din pagina oficială, verificat prin indexul web la 27.09.2026. Programul și persoanele pot fi schimbate; confirmați pe pagina sursă.", "ru": "Выборочная выписка с официальной страницы, проверена через веб-индекс 27.09.2026. График и сотрудники могут измениться; уточните на исходной странице."},
+      "rawFile": "corpus/raw/official-ciocana-audiente.txt"
+    },
+    {
+      "id": "official-ciocana-institutii",
+      "kind": "real",
+      "title": "Instituții publice din sectorul Ciocana",
+      "url": "https://ciocana.md/institutii-publice",
+      "publisher": "Pretura sectorului Ciocana",
+      "annexCategory": "Administrație de sector",
+      "annexStartUrl": "https://ciocana.md/",
+      "lang": "ro",
+      "docType": {"ro": "Director de instituții publice", "ru": "Справочник государственных учреждений"},
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": {"ro": "Extras selectiv din pagina oficială, verificat prin indexul web la 27.09.2026. Contactele pot fi schimbate; confirmați pe pagina sursă.", "ru": "Выборочная выписка с официальной страницы, проверена через веб-индекс 27.09.2026. Контакты могут измениться; уточните на исходной странице."},
+      "rawFile": "corpus/raw/official-ciocana-institutii.txt"
+    },
+    {
+      "id": "official-centru-petitii",
+      "kind": "real",
+      "title": "Petiții Online – Pretura Sectorului Centru",
+      "url": "https://chisinaucentru.md/petitii-online/",
+      "publisher": "Pretura sectorului Centru",
+      "annexCategory": "Administrație de sector",
+      "annexStartUrl": "https://chisinaucentru.md/",
+      "lang": "ro",
+      "docType": {"ro": "Pagină de serviciu", "ru": "Страница услуги"},
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": {"ro": "Extras selectiv din pagina oficială, verificat prin indexul web la 27.09.2026. Procedura poate fi schimbată; confirmați pe pagina sursă.", "ru": "Выборочная выписка с официальной страницы, проверена через веб-индекс 27.09.2026. Порядок может измениться; уточните на исходной странице."},
+      "rawFile": "corpus/raw/official-centru-petitii.txt"
+    }
+  ],
+  "passages": [
+    {"id":"official-ciocana-audiente#program","docId":"official-ciocana-audiente","locator":{"ro":"Programul de audiență, începutul paginii","ru":"График приема, начало страницы"},"lang":"ro","text":"Programul de audienţă a cetăţenilor Sinilga ȘCOLNIC - pretor al sectorului Ciocana Luni 14:00-17:00 Birou 20"},
+    {"id":"official-ciocana-audiente#secretariat","docId":"official-ciocana-audiente","locator":{"ro":"Serviciul audienţă şi secretariat","ru":"Приемная и секретариат"},"lang":"ro","text":"Serviciul audienţă şi secretariat Zilnic 08:00-17:00 Pauză de masă 12:00-13:00 Birou 7 022 33 18 33"},
+    {"id":"official-ciocana-audiente#urbanism","docId":"official-ciocana-audiente","locator":{"ro":"Secția urbanism şi arhitectură","ru":"Отдел градостроительства и архитектуры"},"lang":"ro","text":"Secția urbanism şi arhitectură Luni 14:00-17:00 Vineri 14:00-17:00"},
+    {"id":"official-ciocana-institutii#educatie","docId":"official-ciocana-institutii","locator":{"ro":"Servicii publice de sector, direcția educație","ru":"Учреждения сектора, управление образования"},"lang":"ro","text":"Direcţia educaţie, tineret și sport Adresa: str. Alecu Russo, 57 Telefon: 022 33 11 34"},
+    {"id":"official-ciocana-institutii#copii","docId":"official-ciocana-institutii","locator":{"ro":"Servicii publice de sector, protecția copilului","ru":"Учреждения сектора, защита прав ребенка"},"lang":"ro","text":"Direcţia pentru Protecţia Drepturilor Copilului Adresa: bd. Mircea cel Bătrîn, 16 Telefon: 022 34 66 60"},
+    {"id":"official-ciocana-institutii#social","docId":"official-ciocana-institutii","locator":{"ro":"Servicii publice de sector, asistență socială","ru":"Учреждения сектора, социальная помощь"},"lang":"ro","text":"Direcţia asistenţă socială Adresa: bd. Mircea cel Bătrîn, 5/2 Telefon: 022 78 29 06"},
+    {"id":"official-centru-petitii#formular","docId":"official-centru-petitii","locator":{"ro":"Introducerea paginii Petiții Online","ru":"Введение страницы онлайн-петиций"},"lang":"ro","text":"Stimaţi cetăţeni, vă propunem serviciul „Petiţii / Cereri Online” care vă permite completarea unui formular tipizat on-line şi expedierea acestuia în adresa Preturii."},
+    {"id":"official-centru-petitii#procesare","docId":"official-centru-petitii","locator":{"ro":"Procesarea petițiilor electronice","ru":"Обработка электронных петиций"},"lang":"ro","text":"Petiţiile în formă electronică se procesează în mod similar celor depuse la sediul Preturii (Ghișeu Unic, tel. 274576). Astfel, li se atribuie un număr de înregistrare şi cod de autentificare."},
+    {"id":"official-centru-petitii#restrictie","docId":"official-centru-petitii","locator":{"ro":"Atenționarea de pe pagina Petiții Online","ru":"Предупреждение на странице онлайн-петиций"},"lang":"ro","text":"Atenție: Nu puteţi aplica on-line cereri la soluţionarea cărora este obligatorie prezentarea unor documente."},
+    {"id":"official-centru-petitii#informare","docId":"official-centru-petitii","locator":{"ro":"Notificarea prin e-mail","ru":"Уведомление по электронной почте"},"lang":"ro","text":"Despre orice modificare în soluţionarea adresării Dvs., veţi primi un mesaj de informare la adresa de e-mail indicată în formularul de aplicare."}
+  ]
+}

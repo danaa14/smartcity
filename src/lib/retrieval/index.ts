@@ -314,7 +314,17 @@ const MIN_TOKENS_FOR_COVERAGE = 3;
 export function retrieve(question: string, aspects = detectAspects(question)): Retrieval {
   const ranked = rankTopics(question, aspects).filter((hit) => hit.topic.kind !== "demo");
   const top = ranked[0] && ranked[0].score >= TOPIC_WEAK ? ranked[0] : null;
-  const officialIds = DOCS.filter(isCitizenAnswerSource).map((doc) => doc.id);
+  const official = DOCS.filter(isCitizenAnswerSource);
+  const q = normalize(question);
+  const sectors = ["ciocana", "centru", "botanica", "rascani", "buiucani"].filter((sector) => q.includes(sector));
+  const namedPretura = /(?:pretur|претур)/u.test(q) && sectors.length === 1;
+  const matchingPretura = namedPretura
+    ? official.filter((doc) => {
+        const institution = normalize(`${doc.title} ${doc.publisher}`);
+        return institution.includes("pretur") && institution.includes(sectors[0]);
+      })
+    : [];
+  const officialIds = (matchingPretura.length ? matchingPretura : official).map((doc) => doc.id);
   const informationNeeds = decomposeQuestion(question);
   const needHits = informationNeeds.map((need) =>
     searchPassages(need, 8, officialIds).filter(({ coverage, score }) => score > 0 && coverage >= 0.16),
@@ -346,7 +356,8 @@ export function retrieve(question: string, aspects = detectAspects(question)): R
     needPassages: needHits,
     missingNeeds,
     grounded: needHits.some((hits) => hits.length > 0) &&
-      ((top?.specific ?? 0) >= SPECIFIC_CONFIDENT || (enoughWords && coverage >= COVERAGE_ALONE) || informationNeeds.length > 1),
+      ((top?.specific ?? 0) >= SPECIFIC_CONFIDENT || (enoughWords && coverage >= COVERAGE_ALONE) ||
+        (namedPretura && matchingPretura.length > 0 && enoughWords) || informationNeeds.length > 1),
     confident: (top?.specific ?? 0) >= SPECIFIC_CONFIDENT,
   };
 }

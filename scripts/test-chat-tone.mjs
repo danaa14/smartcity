@@ -40,7 +40,7 @@ const calls = [];
 let reply = 'Conform Anexei 1, pentru situația dumneavoastră aveți nevoie de o cerere [1].';
 globalThis.fetch = async (_url, init) => {
   calls.push(JSON.parse(init.body));
-  return Response.json({ choices: [{ message: { content: reply } }] });
+  return Response.json({ choices: [{ message: { content: typeof reply === 'function' ? reply(JSON.parse(init.body)) : reply } }] });
 };
 const { POST } = await import('../src/server/api/ask.ts');
 const ask = async (body) => {
@@ -62,23 +62,30 @@ assert.match(calls.at(-1).messages[0].content, /В вашем случае по�
 console.log('PROSE TONE OK');
 
 // 3. Cited answers: the drafting prompt asks for direct, second-person claims, and a
-//    "Conform Anexei…" claim keeps its verified quote but loses the opener.
+//    "Conform Anexei…" claim keeps its verified quote but loses the opener. Curated topics
+//    skip the model, so this uses a question answered only from indexed passages.
 const { FACTS } = await import('../src/lib/corpus/facts.ts');
-const fact = FACTS.find((f) => f.id === 'w-cerere');
-reply = JSON.stringify({ claims: [{
-  ro: 'Conform Anexei 1, completați o cerere tip.',
-  ru: 'Согласно приложению 1, заполните типовое заявление.',
-  aspect: ['procedure'],
-  cites: [{ passageId: fact.cites[0].passageId, quote: fact.cites[0].quote }],
-}], missing: [] });
-answer = await ask({ question: 'Ce acte îmi trebuie pentru contractul de apă la apartament?' });
-assert.equal(answer.kind, 'corpus');
-assert.equal(answer.engine.mode, 'llm');
+const { PASSAGE_BY_ID } = await import('../src/lib/corpus/passages.ts');
+const { answerWithModel } = await import('../src/lib/answer/withModel.ts');
+reply = (body) => {
+  const passageId = body.messages[1].content.match(/Passages:\n\[([^\]]+)\]/)?.[1];
+  return JSON.stringify({ claims: [{
+    ro: 'Conform Anexei 1, verificați programul înainte să mergeți.',
+    ru: 'Согласно приложению 1, проверьте график перед визитом.',
+    aspect: ['contact'],
+    cites: [{ passageId, quote: PASSAGE_BY_ID.get(passageId).text.slice(0, 50) }],
+  }], missing: [] });
+};
+answer = await answerWithModel('Care este programul de audiență la Pretura Ciocana?', 'ro');
+assert.equal(answer?.engine.mode, 'llm');
 assert.match(calls.at(-1).messages[0].content, /friendly support agent/);
 assert.match(calls.at(-1).messages[0].content, /Never mention the source in the claim text/);
-assert.equal(answer.claims[0].text.ro, 'Completați o cerere tip.');
-assert.equal(answer.claims[0].text.ru, 'Заполните типовое заявление.');
-assert.equal(answer.claims[0].citations[0].quote, fact.cites[0].quote, 'the evidence itself is untouched');
+assert.equal(answer.claims[0].text.ro, 'Verificați programul înainte să mergeți.');
+assert.equal(answer.claims[0].text.ru, 'Проверьте график перед визитом.');
+// Each claim still quotes its own passage verbatim (drafting runs once per source group).
+for (const c of answer.claims) for (const cit of c.citations)
+  assert.equal(cit.quote, PASSAGE_BY_ID.get(cit.passageId).text.slice(0, 50), 'the evidence itself is untouched');
+reply = 'Conform Anexei 1, pentru situația dumneavoastră aveți nevoie de o cerere [1].';
 console.log('CITED TONE OK');
 
 // 4. No corpus jargon in the gaps people read.

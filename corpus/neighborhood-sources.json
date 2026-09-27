@@ -1,0 +1,28 @@
+{
+  "docs": [
+    {
+      "id": "official-telecentru-sector-centru",
+      "kind": "real",
+      "title": "Proiecte municipale în sectorul Centru",
+      "url": "https://proiecte.chisinau.md/ro/n-1-centru",
+      "publisher": "Primăria Municipiului Chișinău",
+      "annexCategory": "Administrație de sector",
+      "annexStartUrl": "https://chisinau.md/",
+      "lang": "ro",
+      "docType": { "ro": "Pagină oficială de proiecte", "ru": "Официальная страница проектов" },
+      "retrievedAt": "2026-09-27",
+      "status": "unknown",
+      "statusNote": { "ro": "Extras din pagina oficială verificat la 27.09.2026; nu stabilește limite cadastrale exacte.", "ru": "Отрывок с официальной страницы проверен 27.09.2026; точные кадастровые границы не установлены." },
+      "rawFile": "corpus/raw/telecentru-sector-centru.txt"
+    }
+  ],
+  "passages": [
+    {
+      "id": "official-telecentru-sector-centru#location",
+      "docId": "official-telecentru-sector-centru",
+      "locator": { "ro": "Secțiunea «Curți de bloc modernizate, Centru»", "ru": "Раздел «Модернизированные дворы, Центр»" },
+      "lang": "ro",
+      "text": "Proiectul municipal a fost realizat în sectorul Centru pe 17 adrese, cele mai multe lucrări fiind realizate în cartierul Telecentru."
+    }
+  ]
+}

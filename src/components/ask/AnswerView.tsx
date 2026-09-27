@@ -69,6 +69,20 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
     </span>
   );
 
+  const linkForStep = (step: Answer["steps"][number]) => {
+    if (step.action) return step.action;
+    for (const id of step.claimIds) {
+      const passageId = answer.claimIndex[id]?.citations[0]?.passageId;
+      const docId = passageId ? answer.passages[passageId]?.docId : undefined;
+      const doc = docId ? answer.docs[docId] : undefined;
+      if (doc?.url) return {
+        url: doc.url,
+        label: { ro: `Unde verifici: ${doc.publisher}`, ru: `Где проверить: ${doc.publisher}` },
+      };
+    }
+    return null;
+  };
+
   const claimBody = (claim: Claim) => (
     <>
       <span>{claim.text[answerLang]}</span>
@@ -110,6 +124,19 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
         {answer.prose?.split(/\n{2,}/).map((para, i) => (
           <p key={i} className="prose-paragraph">{para}</p>
         ))}
+        {answer.steps.length > 0 && (
+          <section aria-label={t({ ro: "Ce faci mai departe", ru: "Что делать дальше" })} className="mt-5">
+            <h3 className="font-bold">{t({ ro: "Ce faci mai departe", ru: "Что делать дальше" })}</h3>
+            <ol className="mt-2 space-y-3">
+              {answer.steps.map((step, i) => (
+                <li key={i}>
+                  <span className="font-semibold">{i + 1}. </span>{step.text[answerLang]}
+                  {step.action && <p className="mt-1"><ExternalLink href={step.action.url} lang={answerLang}>{step.action.label[answerLang]}</ExternalLink></p>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
         {!!answer.web?.length && (
           <div className="prose-links">
             <span>{t({ ro: "Verificați la:", ru: "Проверьте на:" })}</span>
@@ -210,17 +237,24 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
           </section>
         ))}
 
-        {compact && (answer.steps.length > 0 || answer.contacts.length > 0 || answer.servicePage) && <button type="button" className="answer-details-toggle" aria-expanded={showDetails} onClick={() => setShowDetails((v) => !v)}>{showDetails ? t({ ro: "Mai puține detalii −", ru: "Меньше деталей −" }) : t({ ro: "Pașii următori și contacte +", ru: "Следующие шаги и контакты +" })}</button>}
+        {compact && answer.servicePage && answer.claims.some((claim) => claim.id === answer.servicePage?.claimId) && (
+          <p><ExternalLink href={answer.servicePage.url} lang={answerLang}>{answer.servicePage.label[answerLang]}</ExternalLink></p>
+        )}
+        {compact && (answer.contacts.length > 0 || answer.servicePage) && <button type="button" className="answer-details-toggle" aria-expanded={showDetails} onClick={() => setShowDetails((v) => !v)}>{showDetails ? t({ ro: "Mai puține detalii −", ru: "Меньше деталей −" }) : t({ ro: "Contacte și detalii +", ru: "Контакты и детали +" })}</button>}
 
-        {(!compact || showDetails) && answer.steps.length > 0 && (
+        {answer.steps.length > 0 && (
           <section aria-labelledby={`${uid}-gps-h`} className="card p-4 sm:p-5">
             <h3 id={`${uid}-gps-h`} className="flex items-center gap-2 font-bold">
               <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-brand text-sm text-white">➜</span>
               {t({ ro: "Traseul dvs. — pașii următori", ru: "Ваш маршрут — следующие шаги" })}
             </h3>
-            <p className="text-sm text-muted">{t({ ro: "Fiecare pas are dovada lui. Pașii fără dovadă nu sunt afișați.", ru: "У каждого шага есть доказательство. Шаги без доказательства не показываются." })}</p>
+            <p className="text-sm text-muted">{answer.steps.every((step) => step.claimIds.length > 0)
+              ? t({ ro: "Fiecare pas are dovada lui și un link oficial.", ru: "У каждого шага есть подтверждение и официальная ссылка." })
+              : t({ ro: "Aceștia sunt pași de verificare, nu o procedură confirmată din corpus.", ru: "Это шаги для проверки, а не подтвержденная по корпусу процедура." })}</p>
             <ol className="mt-3 space-y-0">
-              {answer.steps.map((s, i) => (
+              {answer.steps.map((s, i) => {
+                const stepLink = linkForStep(s);
+                return (
                 <li key={i} className="relative flex gap-3 pb-4 last:pb-0">
                   {i < answer.steps.length - 1 && <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-2rem)] w-0.5 bg-brand/30" />}
                   <span aria-hidden="true" className="z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-brand bg-white font-bold text-brand">{i + 1}</span>
@@ -228,9 +262,11 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
                     <span className="sr-only">{t({ ro: "Pasul", ru: "Шаг" })} {i + 1}: </span>
                     <span>{s.text[answerLang]}</span>
                     {s.claimIds.map((id) => answer.claimIndex[id] && <Fragment key={id}>{markers(answer.claimIndex[id])}</Fragment>)}
+                    {stepLink && <p className="mt-1"><ExternalLink href={stepLink.url} lang={answerLang}>{stepLink.label[answerLang]}</ExternalLink></p>}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ol>
           </section>
         )}

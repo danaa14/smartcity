@@ -4,6 +4,10 @@ import { newTicketId, saveMedia, validateMedia, tickets } from "@/lib/tickets/re
 import { getSubmissionAdapter } from "@/lib/tickets/adapter";
 import { RECIPIENTS, type RecipientId } from "@/lib/tickets/recipients";
 import { gpsFromExif } from "@/lib/tickets/exif";
+import { staffSession } from "@/lib/staff/auth";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { UPLOAD_DIR } from "@/lib/store/db";
 
 export const runtime = "nodejs";
 const CAT_IDS = new Set(CATEGORIES.map((c) => c.id));
@@ -13,10 +17,10 @@ export async function POST(req: Request) {
   if (!form) return NextResponse.json({ error: "bad_request" }, { status: 400 });
   const s = (k: string) => (typeof form.get(k) === "string" ? (form.get(k) as string).trim() : "");
 
-  const description = s("description").slice(0, 1000);
+  const transcript = s("transcript").slice(0, 1000);
+  const description = (s("description") || transcript).slice(0, 1000);
   const title = (s("title") || description).slice(0, 100);
   const service = (s("service") || "city") as ServiceId;
-  const transcript = s("transcript").slice(0, 1000);
   const city = (s("city") || "Chișinău").slice(0, 80);
   const locationInput = s("location").slice(0, 300);
   const category = s("category") as CategoryId;
@@ -27,6 +31,7 @@ export async function POST(req: Request) {
   const errors: Record<string, string> = {};
   if (!SERVICES.some(item => item.id === service)) errors.service = "invalid_service";
   if (title.length < 3) errors.title = "title_short";
+  if (description.trim().length < 10) errors.description = "description_short";
   if (!RECIPIENTS.some(r => r.id === recipient)) errors.recipient = "invalid_recipient";
   if (!validLinks) errors.links = "invalid_links";
   if (mediaFiles.length > 4) errors.media = "too_many_files";
@@ -43,11 +48,19 @@ export async function POST(req: Request) {
 
   const id = newTicketId();
   const media: TicketMedia[] = [];
-  for (const f of mediaFiles) {
-    if (f.size === 0) continue;
-    const saved = await saveMedia(id, f);
-    if ("error" in saved) return NextResponse.json({ error: "media", reason: saved.error, name: f.name }, { status: 422 });
-    media.push(saved);
+  try {
+    for (const f of mediaFiles) {
+      if (f.size === 0) continue;
+      const saved = await saveMedia(id, f);
+      if ("error" in saved) {
+        await Promise.all(media.map((m) => fs.rm(path.join(UPLOAD_DIR, m.file), { force: true }).catch(() => undefined)));
+        return NextResponse.json({ error: "media", reason: saved.error, name: f.name }, { status: 422 });
+      }
+      media.push(saved);
+    }
+  } catch {
+    await Promise.all(media.map((m) => fs.rm(path.join(UPLOAD_DIR, m.file), { force: true }).catch(() => undefined)));
+    return NextResponse.json({ error: "media_save_failed" }, { status: 500 });
   }
 
   const lat = s("lat") ? Number(s("lat")) : photoGps?.lat;
@@ -81,12 +94,17 @@ export async function POST(req: Request) {
   };
   const res = await adapter.submit(ticket);
   ticket.submission = { adapter: adapter.id, submitted: res.submitted, externalId: null, note: res.note };
-  await tickets.insert(ticket);
-  if (req.headers.get("accept")?.includes("text/html")) return NextResponse.redirect(new URL(`/tichet/${id}?nou=1`, req.url), 303);
+  try {
+    await tickets.insert(ticket);
+  } catch {
+    await Promise.all(media.map((m) => fs.rm(path.join(UPLOAD_DIR, m.file), { force: true }).catch(() => undefined)));
+    return NextResponse.json({ error: "save_failed" }, { status: 500 });
+  }
   return NextResponse.json({ id });
 }
 
 export async function GET() {
+  if (await staffSession() !== "ok") return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const all = await tickets.all();
   return NextResponse.json(all.map((t) => ({ id: t.id, createdAt: t.createdAt, category: t.category })));
 }

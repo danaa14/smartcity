@@ -1,4 +1,7 @@
 import annexIngest from "../../../corpus/annex-ingest.json";
+import neighborhoodSources from "../../../corpus/neighborhood-sources.json";
+import supplemental from "../../../corpus/official-supplement.json";
+import actionGuides from "../../../corpus/action-guides.json";
 import type { SourceDoc } from "./types";
 
 const RETRIEVED = "2026-09-25";
@@ -366,6 +369,9 @@ export const DOCS: SourceDoc[] = [
 ];
 
 DOCS.push(...(annexIngest.docs as SourceDoc[]));
+DOCS.push(...(neighborhoodSources.docs as SourceDoc[]));
+DOCS.push(...(supplemental.docs as SourceDoc[]));
+DOCS.push(...(actionGuides.docs as SourceDoc[]));
 
 export const DOC_BY_ID = new Map(DOCS.map((d) => [d.id, d]));
 

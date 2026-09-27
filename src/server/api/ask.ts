@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { answerWithModel } from "@/lib/answer/withModel";
+import { fastContactAnswer } from "@/lib/answer/fastContacts";
+import { actionGuide } from "@/lib/answer/actionGuides";
+import { withActionPlan } from "@/lib/answer/actionPlan";
 import { answerQuestion } from "@/lib/answer/pipeline";
 import { askGeneral, proseAnswer, streamGeneral, type DocContext } from "@/lib/answer/general";
-import { withWebFallback, type WebResult } from "@/lib/web/search";
+import { withWebFallback, officialFallbackLinks } from "@/lib/web/search";
 import { retrieve } from "@/lib/retrieval";
 import { logReview } from "@/lib/feedback";
 import { logAsk } from "@/lib/staff/events";
@@ -10,6 +13,7 @@ import { AI } from "@/lib/ai/config";
 import type { Lang } from "@/lib/corpus/types";
 import type { Answer } from "@/lib/answer/types";
 import { contextualQuestion, refersToDocument, sanitizeHistory } from "@/lib/chat/context";
+import { detectRules } from "@/lib/scan/pii";
 
 export const runtime = "nodejs";
 
@@ -89,6 +93,9 @@ export async function POST(req: Request) {
   // script the question happens to be typed in. Retrieval itself is language-agnostic.
   const lang: Lang = body?.lang === "ru" ? "ru" : "ro";
   const turns = sanitizeHistory(body?.history);
+  if (detectRules(question).length || turns.some((turn) => detectRules(turn.content).length)) {
+    return NextResponse.json({ error: "pii_leak" }, { status: 422 });
+  }
   const history = historyOf(turns);
   const query = contextualQuestion(question, turns, lang);
   const doc = documentOf(body?.document);
@@ -104,20 +111,28 @@ export async function POST(req: Request) {
  * keyword cannot replace analysis of the actual uploaded clauses.
  */
 async function resolve(req: Pick<Request, "signal">, question: string, lang: Lang, history: string, doc?: DocContext, query = question): Promise<Answer> {
+  if (!doc || !refersToDocument(question)) {
+    const guide = actionGuide(query, lang);
+    if (guide) return { ...guide, question };
+    const direct = fastContactAnswer(query, lang);
+    if (direct) return { ...direct, question };
+  }
   const grounded = !(doc && refersToDocument(question)) && retrieve(query).grounded;
   if (grounded) {
     const corpus = await answerWithModel(query, lang, req.signal);
     if (corpus) return withWebFallback({ ...corpus, question }, query);
+    // A plausible passage match is not permission to replace missing evidence with
+    // an uncited model answer. Return the explicit gap and official next action.
+    return withWebFallback(answerQuestion(question, lang, { includeDemo: false, forceMissing: true }), query);
   }
-  if (!AI.enabled) return answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
-  const web = Promise.resolve<WebResult[]>([]);
+  if (!AI.enabled) return withWebFallback(answerQuestion(question, lang, { includeDemo: false, forceMissing: true }), query);
   const text = await askGeneral(question, lang, history, req.signal, doc);
-  return proseAnswer(question, lang, text, await web);
+  return proseAnswer(question, lang, text, officialFallbackLinks(query));
 }
 
 async function json(req: Pick<Request, "signal">, question: string, lang: Lang, history: string, doc?: DocContext, query = question) {
   try {
-    const answer = await resolve(req, question, lang, history, doc, query);
+    const answer = withActionPlan(await resolve(req, question, lang, history, doc, query));
     await record(answer, question, lang);
     return NextResponse.json(answer);
   } catch (e) {
@@ -145,6 +160,22 @@ function streamed(req: Pick<Request, "signal">, question: string, lang: Lang, hi
       };
 
       try {
+        if (!doc || !refersToDocument(question)) {
+          const guide = actionGuide(query, lang);
+          if (guide) {
+            const answer = withActionPlan({ ...guide, question });
+            send({ type: "answer", answer });
+            await record(answer, question, lang);
+            return close();
+          }
+          const direct = fastContactAnswer(query, lang);
+          if (direct) {
+            const answer = withActionPlan({ ...direct, question });
+            send({ type: "answer", answer });
+            await record(answer, question, lang);
+            return close();
+          }
+        }
         const grounded = !(doc && refersToDocument(question)) && retrieve(query).grounded;
         if (grounded) {
           send({ type: "phase", label: phases.search });
@@ -156,23 +187,27 @@ function streamed(req: Pick<Request, "signal">, question: string, lang: Lang, hi
             clearInterval(ticker);
           }
           if (corpus) {
-            const answer = await withWebFallback({ ...corpus, question }, query);
+            const answer = withActionPlan(await withWebFallback({ ...corpus, question }, query));
             console.log(`[ask] corpus ms=${Date.now() - t0} status=${answer.status} claims=${answer.claims.length}`);
             send({ type: "answer", answer });
             await record(answer, question, lang);
             return close();
           }
+          const answer = withActionPlan(await withWebFallback(answerQuestion(question, lang, { includeDemo: false, forceMissing: true }), query));
+          send({ type: "answer", answer });
+          await record(answer, question, lang);
+          return close();
         }
 
         if (!AI.enabled) {
-          const answer = answerQuestion(question, lang, { includeDemo: false, forceMissing: true });
+          const answer = withActionPlan(await withWebFallback(answerQuestion(question, lang, { includeDemo: false, forceMissing: true }), query));
           send({ type: "answer", answer });
           await record(answer, question, lang);
           return close();
         }
 
         // Fetch official links alongside the stream so they cost no extra wait.
-        const web = Promise.resolve<WebResult[]>([]);
+        const web = officialFallbackLinks(query);
         send({ type: "phase", label: doc ? phases.document : phases.think });
 
         let text = "";
@@ -188,7 +223,7 @@ function streamed(req: Pick<Request, "signal">, question: string, lang: Lang, hi
           return close();
         }
 
-        const answer = proseAnswer(question, lang, text, await web);
+        const answer = withActionPlan(proseAnswer(question, lang, text, web));
         console.log(`[ask] prose ms=${Date.now() - t0} chars=${text.length} web=${answer.web?.length ?? 0}`);
         send({ type: "answer", answer });
         await record(answer, question, lang);
