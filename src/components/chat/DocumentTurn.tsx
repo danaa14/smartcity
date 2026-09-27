@@ -19,6 +19,10 @@ export interface DocContext {
 
 type Stage = "ocr" | "redact" | "sending" | "result";
 
+function isLikelyMobile() {
+  return typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches);
+}
+
 /**
  * The document flow as conversation turns. OCR and personal-data detection run in the
  * browser; the redaction gate is the one step the user cannot skip, because confirming it
@@ -65,17 +69,24 @@ export function DocumentTurn({ file, name, goal, onReady }: { file: File; name: 
 
         const rules = detectRules(full);
         setSpans(mergeSpans(rules, full));
-        setProgress({ label: { ro: "Pornesc modelul local de protecție a datelor…", ru: "Запускаю локальную модель защиты данных…" }, pct: 0 });
-        try {
-          const model = await detectModel(full, (pct) =>
-            setProgress({ label: { ro: "Descarc modelul local (~280 MB, o singură dată)…", ru: "Скачиваю локальную модель (~280 МБ, один раз)…" }, pct }),
-          );
-          setSpans((cur) => mergeSpans([...rules, ...model, ...cur.filter((s) => s.source === "user")], full));
-        } catch {
+        if (isLikelyMobile()) {
           setErr(t({
-            ro: "Modelul local nu a pornit pe acest dispozitiv. S-au aplicat doar regulile automate — verificați lista și marcați manual numele.",
-            ru: "Локальная модель не запустилась. Применены только автоматические правила — проверьте список и отметьте имена вручную.",
+            ro: "Pe telefon am folosit doar regulile automate pentru a evita blocarea dispozitivului. Verificați textul și marcați manual numele sau alte date pe care doriți să le ascundeți.",
+            ru: "На телефоне применены только автоматические правила, чтобы не перегружать устройство. Проверьте текст и вручную отметьте имена и другие данные, которые нужно скрыть.",
           }));
+        } else {
+          setProgress({ label: { ro: "Pornesc modelul local de protecție a datelor…", ru: "Запускаю локальную модель защиты данных…" }, pct: 0 });
+          try {
+            const model = await detectModel(full, (pct) =>
+              setProgress({ label: { ro: "Descarc modelul local (~280 MB, o singură dată)…", ru: "Скачиваю локальную модель (~280 МБ, один раз)…" }, pct }),
+            );
+            setSpans((cur) => mergeSpans([...rules, ...model, ...cur.filter((s) => s.source === "user")], full));
+          } catch {
+            setErr(t({
+              ro: "Modelul local nu a pornit pe acest dispozitiv. S-au aplicat doar regulile automate — verificați lista și marcați manual numele.",
+              ru: "Локальная модель не запустилась. Применены только автоматические правила — проверьте список и отметьте имена вручную.",
+            }));
+          }
         }
         setProgress(null);
       } catch (e) {

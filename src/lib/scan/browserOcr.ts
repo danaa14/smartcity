@@ -59,7 +59,11 @@ async function getWorker(onProgress?: Progress): Promise<Worker> {
 /** Upscales small images, converts to grayscale and stretches contrast — the steps that most improve Tesseract accuracy on phone photos. */
 function preprocess(src: CanvasImageSource, w: number, h: number): HTMLCanvasElement {
   const targetLong = 2400;
-  const scale = Math.min(3, Math.max(1, targetLong / Math.max(w, h)));
+  // Compressed phone photos can decode to tens of megapixels. Keep the working
+  // surface bounded: canvas pixels and getImageData each consume several bytes
+  // per pixel, before Tesseract's own WASM memory is counted.
+  const maxPixels = 5_500_000;
+  const scale = Math.min(1.5, targetLong / Math.max(w, h), Math.sqrt(maxPixels / (w * h)));
   const c = document.createElement("canvas");
   c.width = Math.round(w * scale);
   c.height = Math.round(h * scale);
@@ -89,22 +93,54 @@ function preprocess(src: CanvasImageSource, w: number, h: number): HTMLCanvasEle
   return c;
 }
 
-async function fileToCanvases(file: File, onProgress?: Progress): Promise<HTMLCanvasElement[]> {
+async function recognizeCanvas(worker: Worker, canvas: HTMLCanvasElement, onProgress?: Progress, page?: number, pages?: number): Promise<OcrPage> {
+  try {
+    const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
+    const words: OcrWord[] = [];
+    for (const b of data.blocks ?? []) for (const p of b.paragraphs) for (const l of p.lines) for (const w of l.words) if (w.text.trim()) words.push({ text: cleanOcr(w.text), conf: w.confidence, bbox: w.bbox });
+    const result = { image: canvas.toDataURL("image/jpeg", 0.85), width: canvas.width, height: canvas.height, text: cleanOcr(data.text), words, confidence: Math.round(data.confidence) };
+    onProgress?.("recognize", 1, page, pages);
+    return result;
+  } finally {
+    // Drop the large RGBA backing store as soon as this page is done.
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
+async function recognizeFile(worker: Worker, file: File, onProgress?: Progress): Promise<OcrPage[]> {
   if (file.type === "application/pdf") {
     const pdfjs = await import("pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc = "/ocr/pdf/pdf.worker.min.mjs";
     const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
     const pages = Math.min(pdf.numPages, 5);
-    const out: HTMLCanvasElement[] = [];
-    for (let n = 1; n <= pages; n++) {
-      onProgress?.("render", n / pages, n, pages);
-      const page = await pdf.getPage(n);
-      const vp = page.getViewport({ scale: 300 / 72 });
-      const c = document.createElement("canvas");
-      c.width = vp.width;
-      c.height = vp.height;
-      await page.render({ canvas: c, canvasContext: c.getContext("2d")!, viewport: vp }).promise;
-      out.push(preprocess(c, c.width, c.height));
+    const out: OcrPage[] = [];
+    try {
+      for (let n = 1; n <= pages; n++) {
+        onProgress?.("render", n / pages, n, pages);
+        const page = await pdf.getPage(n);
+        const base = page.getViewport({ scale: 1 });
+        // Limit PDF rasterization itself; resizing only after rendering would
+        // still allocate a full 300-DPI canvas and can kill mobile browsers.
+        const scale = Math.min(300 / 72, 2200 / Math.max(base.width, base.height), Math.sqrt(5_500_000 / (base.width * base.height)));
+        const vp = page.getViewport({ scale });
+        const source = document.createElement("canvas");
+        source.width = Math.ceil(vp.width);
+        source.height = Math.ceil(vp.height);
+        try {
+          await page.render({ canvas: source, canvasContext: source.getContext("2d")!, viewport: vp }).promise;
+          const processed = preprocess(source, source.width, source.height);
+          source.width = 0;
+          source.height = 0;
+          out.push(await recognizeCanvas(worker, processed, onProgress, n, pages));
+        } finally {
+          source.width = 0;
+          source.height = 0;
+          page.cleanup();
+        }
+      }
+    } finally {
+      await pdf.destroy();
     }
     return out;
   }
@@ -113,7 +149,10 @@ async function fileToCanvases(file: File, onProgress?: Progress): Promise<HTMLCa
       const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
       try {
         onProgress?.("render", 1, 1, 1);
-        return [preprocess(bmp, bmp.width, bmp.height)];
+        const canvas = preprocess(bmp, bmp.width, bmp.height);
+        // The decoded source may be much larger than the bounded OCR canvas.
+        bmp.close();
+        return [await recognizeCanvas(worker, canvas, onProgress, 1, 1)];
       } finally {
         bmp.close();
       }
@@ -127,7 +166,9 @@ async function fileToCanvases(file: File, onProgress?: Progress): Promise<HTMLCa
     img.src = url;
     await img.decode();
     onProgress?.("render", 1, 1, 1);
-    return [preprocess(img, img.naturalWidth, img.naturalHeight)];
+    const canvas = preprocess(img, img.naturalWidth, img.naturalHeight);
+    img.src = "";
+    return [await recognizeCanvas(worker, canvas, onProgress, 1, 1)];
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -143,15 +184,5 @@ export function cleanOcr(s: string): string {
 
 export async function recognize(file: File, onProgress?: Progress): Promise<OcrPage[]> {
   const worker = await getWorker(onProgress);
-  const canvases = await fileToCanvases(file, onProgress);
-  const pages: OcrPage[] = [];
-  for (let i = 0; i < canvases.length; i++) {
-    const c = canvases[i];
-    const { data } = await worker.recognize(c, {}, { text: true, blocks: true });
-    const words: OcrWord[] = [];
-    for (const b of data.blocks ?? []) for (const p of b.paragraphs) for (const l of p.lines) for (const w of l.words) if (w.text.trim()) words.push({ text: cleanOcr(w.text), conf: w.confidence, bbox: w.bbox });
-    pages.push({ image: c.toDataURL("image/jpeg", 0.85), width: c.width, height: c.height, text: cleanOcr(data.text), words, confidence: Math.round(data.confidence) });
-    onProgress?.("recognize", 1, i + 1, canvases.length);
-  }
-  return pages;
+  return recognizeFile(worker, file, onProgress);
 }

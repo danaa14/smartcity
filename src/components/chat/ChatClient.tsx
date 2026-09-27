@@ -22,6 +22,10 @@ type Sheet = "faq" | "call" | "tools";
 const ACCEPT = "image/*,application/pdf";
 const MAX_BYTES = 10 * 1024 * 1024;
 
+function isLikelyMobile() {
+  return typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches);
+}
+
 const settled = (turn?: Turn) => (turn?.kind === "doc" ? !!turn.ctx : !!turn?.answer);
 
 type ServerEvent =
@@ -98,7 +102,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const [preparing, setPreparing] = useState<number | null>(null);
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (!(navigator as any).connection?.saveData) warmNameModel().catch(() => {});
+    if (!(navigator as any).connection?.saveData && !isLikelyMobile()) warmNameModel().catch(() => {});
   }, []);
   useEffect(() => {
     const listener = (pct: number | null) => setPreparing((current) => (current === null ? null : pct ?? 0));
@@ -327,7 +331,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
         <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); void ask(draft); }}>
           <button type="button" className="composer-tools" aria-label={t({ ro: "Adaugă un document sau pregătește o sesizare", ru: "Добавить документ или подготовить обращение" })} onClick={(e) => openSheet("tools", e.currentTarget)}><Icon name="plus" /></button>
           <label htmlFor="chat-message" className="sr-only">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label>
-          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onFocus={() => { warmNameModel().catch(() => {}); }} onChange={(e) => { setDraft(e.target.value); setValidation(false); warmNameModel().catch(() => {}); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
+          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onFocus={() => { if (!isLikelyMobile()) warmNameModel().catch(() => {}); }} onChange={(e) => { setDraft(e.target.value); setValidation(false); if (!isLikelyMobile()) warmNameModel().catch(() => {}); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
