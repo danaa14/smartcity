@@ -11,6 +11,10 @@ import type { DocReview } from "@/lib/scan/review";
 
 type Stage = "pick" | "ocr" | "redact" | "sending" | "result";
 
+function isLikelyMobile() {
+  return typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(pointer: coarse)").matches);
+}
+
 const GOALS: L10n[] = [
   { ro: "Vând ceva — are contractul toate datele necesare?", ru: "Я продаю — есть ли в договоре все нужные данные?" },
   { ro: "Cumpăr ceva — sunt termenii corecți pentru mine?", ru: "Я покупаю — выгодны ли мне условия?" },
@@ -42,6 +46,11 @@ export function AssistantScan() {
     const rules = detectRules(t0);
     const mine = spans.filter((s) => s.source === "user" && t0.slice(s.start, s.end) === s.text);
     setSpans(mergeSpans([...rules, ...mine], t0));
+    if (isLikelyMobile()) {
+      setErr(t({ ro: "Pe telefon am folosit doar regulile automate pentru a evita blocarea dispozitivului. Verificați textul și marcați manual numele sau alte date pe care doriți să le ascundeți.", ru: "На телефоне применены только автоматические правила, чтобы не перегружать устройство. Проверьте текст и вручную отметьте имена и другие данные, которые нужно скрыть." }));
+      setProgress(null);
+      return;
+    }
     setProgress({ label: { ro: "Încarc modelul local de protecție a datelor…", ru: "Загружаю локальную модель защиты данных…" }, pct: 0 });
     try {
       const model = await detectModel(t0, (p) => setProgress({ label: { ro: "Descarc modelul local (~104 MB, o singură dată, apoi rămâne în browser)…", ru: "Скачиваю локальную модель (~104 МБ, один раз, затем она остаётся в браузере)…" }, pct: p }));
