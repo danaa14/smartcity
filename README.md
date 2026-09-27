@@ -22,7 +22,11 @@ Checks:
 ```bash
 npm run verify:corpus   # every real passage must occur verbatim in its fetched snapshot (corpus/raw)
 npm run test:answers    # 10 scenarios → expected answer state
-npm run test:e2e        # 48 headless-browser checks (needs dev server + `npx playwright install chromium`)
+npm run test:chat-lang  # chat replies in the platform language (RO default, RU when switched); provider mocked
+npm run test:chat-tone  # support-agent voice: no "Conform Anexei…" openers or [n] markers in what people read
+npm run test:offline-mode  # no model key: curated answers for one-subject multi-part questions, abstain on mixed ones
+npm run test:chat-ui    # browser: startup keeps the first question/draft, RO/RU wording, streaming clean-up (BASE=…)
+npm run test:e2e        # 51 headless-browser checks: chat, scan, report, staff (BASE=…, STAFF_PASSWORD=… for the staff part)
 npm run test:docchat    # in-chat document flow: attach → local OCR → redaction gate → verdict → follow-up context
                         # STUB=1 mocks the review response, to check the verdict UI without the model
 

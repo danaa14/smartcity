@@ -1,8 +1,8 @@
 // Exercises the in-chat document flow: attach → local OCR → redaction gate → verdict.
-// Usage: node scripts/doc-chat-check.mjs   (needs the dev server on :3100)
+// Usage: node scripts/doc-chat-check.mjs   (needs the dev server; BASE, default :3100)
 import { chromium } from "playwright";
 
-const BASE = "http://localhost:3100";
+const BASE = process.env.BASE ?? "http://localhost:3100";
 const SAMPLE = "public/samples/contract-exemplu.jpg";
 const out = [];
 const ok = (m) => out.push(`${m} OK`);

@@ -17,8 +17,8 @@ export interface Selection {
 
 export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: { compact?: boolean; answer: Answer; headingRef: RefObject<HTMLHeadingElement | null>; onFollowUp: (q: string) => void }) {
   const { lang, t } = useLang();
-  
-  const answerLang = answer.questionLang;
+  // Cited answers carry both languages, so they follow the language selected on the platform.
+  const answerLang = lang;
 
   const screenWide = useMediaQuery("(min-width: 1024px)");
   const wide = screenWide && !compact;
@@ -149,7 +149,7 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
           {answer.claims.length > 0 && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-bold">{t({ ro: "Ce spun sursele", ru: "Что говорят источники" })}</h3>
+                <h3 className="font-bold">{compact ? t({ ro: "Pe scurt", ru: "Коротко" }) : t({ ro: "Ce spun sursele", ru: "Что говорят источники" })}</h3>
                 {!compact && <button type="button" className="btn btn-quiet min-h-9 px-2 text-sm" aria-pressed={xray} onClick={() => setXray((x) => !x)}>
                   <span aria-hidden="true">{xray ? "◉" : "○"}</span>
                   {t({ ro: "Radiografie: arată citatele sub fiecare afirmație", ru: "Рентген: показать цитаты под каждым утверждением" })}
@@ -239,7 +239,7 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
           <section aria-labelledby={`${uid}-miss-h`} className="card border-none p-4 sm:p-5">
             <h3 id={`${uid}-miss-h`} className="flex items-center gap-2 font-bold">
               <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-none-soft">∅</span>
-              {t({ ro: "Ce nu am putut confirma", ru: "Что не удалось подтвердить" })}
+              {compact ? t({ ro: "Ce nu știu încă sigur", ru: "Чего я пока не знаю точно" }) : t({ ro: "Ce nu am putut confirma", ru: "Что не удалось подтвердить" })}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-6">
               {answer.missing.map((m, i) => (
@@ -247,7 +247,9 @@ export function AnswerView({ answer, headingRef, onFollowUp, compact = false }: 
               ))}
             </ul>
             <p className="mt-2 text-sm text-muted">
-              {t({ ro: "Nu completăm golurile prin presupuneri. Întrebarea (fără date personale) a fost adăugată în lista de lacune pentru angajați (prototip).", ru: "Мы не заполняем пробелы догадками. Вопрос (без личных данных) добавлен в список пробелов для сотрудников (прототип)." })}
+              {compact
+                ? t({ ro: "Ca să nu vă spun ceva greșit, n-am ghicit. Am transmis întrebarea (fără date personale) colegilor care completează informațiile (prototip).", ru: "Чтобы не ввести вас в заблуждение, я не гадаю. Вопрос (без личных данных) передан сотрудникам, которые дополняют сведения (прототип)." })
+                : t({ ro: "Nu completăm golurile prin presupuneri. Întrebarea (fără date personale) a fost adăugată în lista de lacune pentru angajați (prototip).", ru: "Мы не заполняем пробелы догадками. Вопрос (без личных данных) добавлен в список пробелов для сотрудников (прототип)." })}
             </p>
           </section>
         )}
@@ -361,8 +363,8 @@ function FollowUps({ answer, onFollowUp }: { answer: Answer; onFollowUp: (q: str
           { ro: "Ce acte îmi trebuie pentru contractul de apă la apartament?", ru: "Какие документы нужны для договора на воду в квартире?" },
         ]).map((q) => (
           <li key={q.ro}>
-            <button type="button" onClick={() => onFollowUp(q[answer.questionLang])} className="rounded-full border border-brand bg-white px-3 py-1.5 text-sm text-brand hover:bg-brand-soft">
-              {q[answer.questionLang]}
+            <button type="button" onClick={() => onFollowUp(q[lang])} className="rounded-full border border-brand bg-white px-3 py-1.5 text-sm text-brand hover:bg-brand-soft">
+              {q[lang]}
             </button>
           </li>
         ))}

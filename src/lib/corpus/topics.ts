@@ -51,9 +51,9 @@ export const TOPICS: Topic[] = [
       factId: "w-cerere",
     },
     gaps: {
-      cost: { ro: "Corpusul nu spune dacă încheierea contractului are o taxă.", ru: "В корпусе не сказано, взимается ли плата за заключение договора." },
-      time: { ro: "Corpusul nu indică în cât timp Apă-Canal încheie contractul după depunere.", ru: "В корпусе не указано, за какой срок Apă-Canal заключает договор после подачи." },
-      channel: { ro: "Corpusul nu confirmă dacă cererea poate fi depusă integral online.", ru: "В корпусе не подтверждено, можно ли подать заявление полностью онлайн." },
+      cost: { ro: "Nu știu sigur dacă încheierea contractului are o taxă — vă confirmă Apă-Canal.", ru: "Точно не знаю, платное ли заключение договора — это подтвердят в Apă-Canal." },
+      time: { ro: "Nu am un termen sigur în care Apă-Canal încheie contractul după depunere — merită să întrebați la depunere.", ru: "Точного срока, за который Apă-Canal заключает договор после подачи, у меня нет — лучше спросить при подаче." },
+      channel: { ro: "Nu pot confirma că cererea se poate depune integral online.", ru: "Не могу подтвердить, что заявление можно подать полностью онлайн." },
     },
   },
   {
@@ -82,8 +82,8 @@ export const TOPICS: Topic[] = [
       factId: "t-potabila",
     },
     gaps: {
-      documents: { ro: "Corpusul nu conține o listă de acte pentru această întrebare.", ru: "В корпусе нет списка документов для этого вопроса." },
-      obligation: { ro: "Corpusul nu conține penalitățile pentru plata întârziată.", ru: "В корпусе нет сведений о штрафах за просрочку оплаты." },
+      documents: { ro: "Pentru această situație nu am o listă sigură de acte.", ru: "Для этой ситуации у меня нет точного списка документов." },
+      obligation: { ro: "Nu am informații sigure despre penalitățile pentru plata întârziată.", ru: "Точных сведений о штрафах за просрочку оплаты у меня нет." },
     },
   },
   {
@@ -150,8 +150,8 @@ export const TOPICS: Topic[] = [
       factId: "p-online",
     },
     gaps: {
-      time: { ro: "Corpusul nu conține termenul în care Primăria răspunde la petiție.", ru: "В корпусе нет срока, в который Примэрия отвечает на петицию." },
-      cost: { ro: "Corpusul nu spune dacă depunerea petiției sau semnarea MSIGN costă ceva.", ru: "В корпусе не сказано, платны ли подача петиции или подпись MSIGN." },
+      time: { ro: "Nu am un termen sigur în care Primăria răspunde la petiție.", ru: "Точного срока, в который Примэрия отвечает на петицию, у меня нет." },
+      cost: { ro: "Nu știu sigur dacă depunerea petiției sau semnarea prin MSIGN costă ceva.", ru: "Точно не знаю, платные ли подача петиции или подпись через MSIGN." },
     },
   },
   {
@@ -201,8 +201,8 @@ export const TOPICS: Topic[] = [
       factId: "d-acte",
     },
     gaps: {
-      time: { ro: "Corpusul nu indică termenul de încheiere a contractului sau graficul de colectare.", ru: "В корпусе нет срока заключения договора или графика вывоза." },
-      channel: { ro: "Corpusul nu confirmă un canal online de încheiere a contractului.", ru: "В корпусе не подтверждён онлайн-канал заключения договора." },
+      time: { ro: "Nu am un termen sigur pentru încheierea contractului și nici graficul de colectare.", ru: "Точного срока заключения договора и графика вывоза у меня нет." },
+      channel: { ro: "Nu pot confirma că contractul se poate încheia online.", ru: "Не могу подтвердить, что договор можно заключить онлайн." },
     },
   },
   {
@@ -221,6 +221,12 @@ export const TOPICS: Topic[] = [
       "defrișare",
       "taiere copac",
       "tăiere copac",
+      "taierea unui copac",
+      "tăierea unui copac",
+      "taierea copacului",
+      "tăierea copacului",
+      "taierea arborilor",
+      "tăierea arborilor",
       "fitosanitar",
       "spatii verzi",
       "spații verzi",
@@ -253,8 +259,8 @@ export const TOPICS: Topic[] = [
       factId: "a-cine",
     },
     gaps: {
-      time: { ro: "Corpusul nu conține termenul de examinare a cererii.", ru: "В корпусе нет срока рассмотрения заявления." },
-      cost: { ro: "Corpusul nu spune dacă examinarea sau tăierea arborilor este cu plată.", ru: "В корпусе не сказано, платное ли обследование или вырубка." },
+      time: { ro: "Nu am un termen sigur în care se examinează cererea.", ru: "Точного срока рассмотрения заявления у меня нет." },
+      cost: { ro: "Nu știu sigur dacă examinarea sau tăierea arborilor este cu plată.", ru: "Точно не знаю, платные ли обследование или вырубка деревьев." },
     },
   },
   {
@@ -268,7 +274,7 @@ export const TOPICS: Topic[] = [
     ],
     contactFactIds: ["p-ghiseu"],
     gaps: {
-      cost: { ro: "[DEMO] Corpusul fictiv nu conține taxa pentru terasă.", ru: "[DEMO] В вымышленном корпусе нет платы за террасу." },
+      cost: { ro: "[DEMO] În documentele fictive nu apare taxa pentru terasă.", ru: "[DEMO] В вымышленных документах нет платы за террасу." },
     },
   },
 ];

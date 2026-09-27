@@ -15,6 +15,7 @@ export interface LlmDraft {
 const ASPECTS: Aspect[] = ["procedure", "documents", "cost", "time", "contact", "obligation", "validity", "channel"];
 
 import { ASSISTANT_GUIDELINES } from "./guidelines";
+import { humanize } from "./tone";
 
 const SYSTEM = `${ASSISTANT_GUIDELINES}
 You answer questions from residents of Chișinău using ONLY the numbered source passages provided.
@@ -24,7 +25,8 @@ Rules:
 - Never state a fee, deadline, document, right or obligation that is not in the passages. If the passages do not answer part of the question, list that part under "missing".
 - If the passages are about a DIFFERENT subject than the question, return {"claims":[],"missing":[...]}. A related-sounding passage is not an answer; never pad the reply with facts the user did not ask about.
 - Do not decide which of two conflicting sources prevails.
-- Write each claim in both Romanian ("ro") and Russian ("ru"); short, plain language, max 2 sentences.
+- Write each claim in both Romanian ("ro") and Russian ("ru"), max 2 sentences, the way a friendly support agent would say it to the person: address them directly (Romanian "dumneavoastră", Russian "вы"), e.g. "Pentru contract aveți nevoie de…" / "Для договора вам понадобится…". Plain everyday words, no bureaucratic phrasing.
+- Never mention the source in the claim text: no "Conform Anexei…", "Potrivit sursei/site-ului…", "Documentul prevede…", "Согласно приложению/источнику…", no [n] markers. The quote carries the evidence; the claim just says the thing.
 - Passages marked DEMO are fictional; if you use them, start both claim texts with "[DEMO] ".
 Return ONLY JSON, no markdown:
 {"claims":[{"ro":"...","ru":"...","aspect":["documents"],"cites":[{"passageId":"...","quote":"..."}]}],"missing":[{"ro":"...","ru":"..."}]}
@@ -70,7 +72,7 @@ export async function draftWithModel(question: string, candidateIds: string[], s
     const demo = cites.some((q) => DOC_BY_ID.get(PASSAGE_BY_ID.get(q.passageId)!.docId)?.kind === "demo");
     return [{
       id: `llm-${i + 1}`,
-      text: { ro: x.ro.slice(0, 600), ru: x.ru.slice(0, 600) },
+      text: { ro: humanize(x.ro).slice(0, 600), ru: humanize(x.ru).slice(0, 600) },
       citations: cites,
       aspect: (x.aspect ?? []).filter((a): a is Aspect => ASPECTS.includes(a as Aspect)),
       demo,

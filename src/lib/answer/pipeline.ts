@@ -199,14 +199,14 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
     if (topic.gaps[a]) missing.push(topic.gaps[a]!);
     else if (!covered.has(a) && a !== "contact")
       missing.push({
-        ro: `Corpusul nu conține informații despre ${ASPECT_LABEL[a].ro} pentru acest subiect.`,
-        ru: `В корпусе нет сведений о «${ASPECT_LABEL[a].ru}» по этой теме.`,
+        ro: `Despre ${ASPECT_LABEL[a].ro} nu am încă o informație sigură — merită verificat direct la instituție.`,
+        ru: `Про «${ASPECT_LABEL[a].ru}» у меня пока нет точной информации — лучше уточнить напрямую в учреждении.`,
       });
   }
   if (report.dropped.length)
     missing.push({
-      ro: `${report.dropped.length} afirmație(i) au fost eliminate deoarece citarea nu a putut fi verificată.`,
-      ru: `${report.dropped.length} утверждение(й) удалено, так как цитату не удалось проверить.`,
+      ro: `Câteva detalii (${report.dropped.length}) nu le-am putut verifica sigur, așa că le-am lăsat deoparte.`,
+      ru: `Некоторые детали (${report.dropped.length}) не удалось надёжно проверить, поэтому их здесь нет.`,
     });
 
   const status: AnswerStatus = conflicts.length ? "contradiction" : claims.length === 0 ? "missing" : missing.length ? "partial" : "supported";
@@ -273,8 +273,8 @@ function missingAnswer(q: string, base: Omit<Answer, "status" | "topicId" | "top
     topicTitle: null,
     demoCorpus: false,
     summary: {
-      ro: "Nu am găsit în corpus niciun pasaj care să răspundă la această întrebare. Nu vom ghici. Mai jos găsiți un contact oficial verificat.",
-      ru: "В корпусе не найдено ни одного фрагмента, отвечающего на этот вопрос. Мы не будем гадать. Ниже — проверенный официальный контакт.",
+      ro: "La întrebarea asta nu am încă un răspuns sigur și nu vreau să vă spun ceva greșit. Mai jos aveți un contact oficial unde vă pot ajuta direct.",
+      ru: "На этот вопрос у меня пока нет точного ответа, и не хочется вводить вас в заблуждение. Ниже — официальный контакт, где вам помогут напрямую.",
     },
     claims: [],
     claimIndex: Object.fromEntries(valid.map((c) => [c.id, c])),
@@ -282,8 +282,8 @@ function missingAnswer(q: string, base: Omit<Answer, "status" | "topicId" | "top
     steps: [],
     missing: [
       {
-        ro: "Subiectul întrebării nu este acoperit de sursele indexate (vezi pagina „Despre / acoperire”).",
-        ru: "Тема вопроса не охвачена проиндексированными источниками (см. страницу «О проекте / охват»).",
+        ro: "Pe acest subiect nu am încă informații verificate. Cel mai sigur este să întrebați direct instituția responsabilă.",
+        ru: "По этой теме у меня пока нет проверенной информации. Надёжнее всего спросить напрямую в ответственном учреждении.",
       },
     ],
     conflicts: [],

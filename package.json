@@ -20,7 +20,11 @@
     "ocr:models": "bash scripts/get-ocr-models.sh",
     "whisper:models": "bash scripts/get-whisper-models.sh",
     "test:assistant": "node --conditions=react-server --import tsx scripts/test-assistant-regressions.mjs",
-    "test:voice-ui": "node scripts/test-voice-ui.mjs"
+    "test:voice-ui": "node scripts/test-voice-ui.mjs",
+    "test:chat-lang": "node --conditions=react-server --import tsx scripts/test-chat-language.mjs",
+    "test:chat-tone": "node --conditions=react-server --import tsx scripts/test-chat-tone.mjs",
+    "test:offline-mode": "node --conditions=react-server --import tsx scripts/test-offline-mode.mjs",
+    "test:chat-ui": "node scripts/test-chat-ui.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
