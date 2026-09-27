@@ -68,7 +68,7 @@ export function DocumentTurn({ file, name, goal, onReady }: { file: File; name: 
         setProgress({ label: { ro: "Pornesc modelul local de protecție a datelor…", ru: "Запускаю локальную модель защиты данных…" }, pct: 0 });
         try {
           const model = await detectModel(full, (pct) =>
-            setProgress({ label: { ro: "Descarc modelul local (~280 MB, o singură dată)…", ru: "Скачиваю локальную модель (~280 МБ, один раз)…" }, pct }),
+            setProgress({ label: { ro: "Verific datele personale pe acest dispozitiv…", ru: "Проверяю личные данные на этом устройстве…" }, pct }),
           );
           setSpans((cur) => mergeSpans([...rules, ...model, ...cur.filter((s) => s.source === "user")], full));
         } catch {

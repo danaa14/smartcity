@@ -15,6 +15,8 @@ export interface PiiSpan {
 }
 
 const RULES: { type: PiiType; re: RegExp }[] = [
+  { type: "name", re: /(?:[Mm][ăa]\s+numesc|[Nn]umele\s+meu\s+(?:este|e))\s+([\p{Lu}][\p{L}'’-]+(?:\s+[\p{Lu}][\p{L}'’-]+){0,2})/gu },
+  { type: "name", re: /(?:[Мм]еня\s+зовут|[Мм]о[её]\s+имя)\s+([\p{Lu}][\p{L}'’-]+(?:\s+[\p{Lu}][\p{L}'’-]+){0,2})/gu },
   { type: "email", re: /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/gu },
   // OCR often misreads "@" as "(Q", "(a)", "©"; catch those so a garbled e-mail is not sent.
   { type: "email", re: /[\p{L}\p{N}._%+-]{2,}\s?(?:\(Q|\(a\)|\(@|©|®|@)\s?[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:md|com|ru|ro|net|org|eu|ua)\b/giu },
@@ -25,7 +27,7 @@ const RULES: { type: PiiType; re: RegExp }[] = [
   { type: "plate", re: /\b[A-ZА-Я]{1,3}[\s-]?[A-ZА-Я]{0,3}[\s-]?\d{3}\b(?=[\s,.;)]|$)/g },
   { type: "id_doc", re: /\b(?:[A-Z]{1,2}\d{7,8}|\d{2}\s?\d{2}\s?\d{6})\b/g },
   { type: "date", re: /\b(?:0?[1-9]|[12]\d|3[01])[./-](?:0?[1-9]|1[0-2])[./-](?:19|20)\d{2}\b/g },
-  { type: "address", re: /(?<![\p{L}])(?:str\.|strada|bd\.|bulevardul|şos\.|șos\.|ул\.|улица|бул\.|пр\.)\s*[\p{L}\s.'’-]{2,40}?,?\s*(?:nr\.?|№|д\.)?\s*\d+[\p{L}]?(?:\s*,?\s*(?:ap\.|кв\.)\s*\d+)?/giu },
+  { type: "address", re: /(?<![\p{L}])(?:str\.|strada|bd\.|bulevardul|şos\.|șos\.|ул\.|улиц[аеы]|бул\.|пр\.)\s*[\p{L}\s.'’-]{2,40}?,?\s*(?:nr\.?|№|д\.)?\s*\d+[\p{L}]?(?:\s*,?\s*(?:ap\.|кв\.)\s*\d+)?/giu },
 ];
 
 /** Deterministic, high-precision detectors for structured identifiers. */
@@ -33,56 +35,99 @@ export function detectRules(text: string): PiiSpan[] {
   const out: PiiSpan[] = [];
   for (const { type, re } of RULES) {
     for (const m of text.matchAll(re)) {
-      const raw = m[0].replace(/[\s,.;-]+$/, "");
+      const raw = (m[1] ?? m[0]).replace(/[\s,.;-]+$/, "");
+      const start = m.index! + (m[1] ? m[0].indexOf(m[1]) : 0);
       if (type === "phone" && raw.replace(/\D/g, "").length < 8) continue;
       if (type === "plate" && !/[A-ZА-Я]{2}/.test(raw)) continue;
-      out.push({ id: `r${m.index}-${type}`, start: m.index!, end: m.index! + raw.length, text: raw, type, source: "rule", score: 1, redact: true });
+      out.push({ id: `r${start}-${type}`, start, end: start + raw.length, text: raw, type, source: "rule", score: 1, redact: true });
     }
   }
   return out;
 }
 
 const NER_MAP: Record<string, PiiType> = {
-  GIVENNAME: "name", SURNAME: "name", TITLE: "name",
-  STREET: "address", BUILDINGNUM: "address", ZIPCODE: "address",
-  CITY: "city",
-  TELEPHONENUM: "phone", EMAIL: "email",
-  IDCARDNUM: "id_doc", PASSPORTNUM: "id_doc", DRIVERLICENSENUM: "id_doc", SOCIALNUM: "idnp", TAXNUM: "idnp",
-  CREDITCARDNUMBER: "card", DATE: "date",
+  GIVEN_NAME: "name", SURNAME: "name",
+  STREET_ADDRESS: "address", STREET_NAME: "address", BUILDING_NUMBER: "address", SECONDARY_ADDRESS: "address", ZIP_CODE: "address",
+  CITY: "city", STATE: "city", COUNTRY: "city",
+  PHONE: "phone", FAX_NUMBER: "phone", EMAIL: "email",
+  GOVERNMENT_ID: "id_doc", PASSPORT: "id_doc", DRIVERS_LICENSE: "id_doc", SSN: "idnp", TAX_ID: "idnp",
+  CREDIT_DEBIT_CARD: "card", CVV: "card", IBAN: "iban", DATE: "date", DATE_OF_BIRTH: "date", LICENSE_PLATE: "plate",
+  ACCOUNT_NUMBER: "other", CUSTOMER_ID: "other", EMPLOYEE_ID: "other", API_KEY: "other", PASSWORD: "other", PIN: "other", USERNAME: "other",
+  MEDICAL_RECORD_NUMBER: "other", ROUTING_NUMBER: "other", SWIFT_BIC: "other", MAC_ADDRESS: "other",
 };
 
-export const NER_MODEL = "onnx-community/multilang-pii-ner-ONNX";
+export const NER_MODEL = "Wismut/nym-pii-multilingual-small";
+export function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 0 && typeof matchMedia !== "undefined" && matchMedia("(max-width: 1024px)").matches);
+}
+const MODEL_REVISION = "4348999cd3c2e20c49615e9af7c6bbb45b64cd85";
+const MODEL_URL = `https://huggingface.co/${NER_MODEL}/resolve/${MODEL_REVISION}/edge-int8/model_int8.onnx`;
+// The model's config uses O followed by B/I pairs in this order.
+const NER_LABELS = ["ACCOUNT_NUMBER", "AGE", "API_KEY", "BUILDING_NUMBER", "CITY", "COMPANY_NAME", "COUNTRY", "CREDIT_DEBIT_CARD", "CUSTOMER_ID", "CVV", "DATE", "DATE_OF_BIRTH", "DRIVERS_LICENSE", "EMAIL", "EMPLOYEE_ID", "FAX_NUMBER", "GENDER", "GIVEN_NAME", "GOVERNMENT_ID", "IBAN", "LICENSE_PLATE", "MAC_ADDRESS", "MEDICAL_RECORD_NUMBER", "PASSPORT", "PASSWORD", "PHONE", "PIN", "ROUTING_NUMBER", "SECONDARY_ADDRESS", "SSN", "STATE", "STREET_ADDRESS", "STREET_NAME", "SURNAME", "SWIFT_BIC", "TAX_ID", "TIME", "URL", "USERNAME", "ZIP_CODE"];
 
-type NerOut = { entity: string; score: number; index: number; word: string; start?: number | null; end?: number | null }[];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let nerPromise: Promise<any> | null = null;
+type NerOut = { entity: string; score: number; word: string }[];
+type LocalNer = (text: string) => Promise<NerOut>;
+let nerPromise: Promise<LocalNer> | null = null;
 
-/** Loads the multilingual PII model once; runs fully in the browser (WebGPU when available, else WASM). Cached by the browser after first download. */
-export async function loadNer(onProgress?: (pct: number) => void) {
+/** Loads the compact multilingual model locally. No message text is sent to the model host. */
+export async function loadNer(onProgress?: (pct: number) => void): Promise<LocalNer> {
   if (!nerPromise) {
     nerPromise = (async () => {
-      const { pipeline, env } = await import("@huggingface/transformers");
+      const [{ AutoTokenizer, env }, ort] = await Promise.all([import("@huggingface/transformers"), import("onnxruntime-web")]);
       env.allowLocalModels = false;
-      const files = new Map<string, { loaded: number; total: number }>();
-      const progress_callback = (p: { status: string; file?: string; loaded?: number; total?: number }) => {
-        if (p.status === "progress" && p.file && p.total) {
-          files.set(p.file, { loaded: p.loaded ?? 0, total: p.total });
-          let l = 0, t = 0;
-          for (const f of files.values()) { l += f.loaded; t += f.total; }
-          onProgress?.(t ? l / t : 0);
-        }
-      };
-      const browser = typeof window !== "undefined";
-      // Runtime files are served from this site: the CDN copy of this onnxruntime build is not published.
-      if (browser && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = { mjs: "/ort/ort-wasm-simd-threaded.asyncify.mjs", wasm: "/ort/ort-wasm-simd-threaded.asyncify.wasm" };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hasGpu = browser && "gpu" in navigator && !!(await (navigator as any).gpu.requestAdapter().catch(() => null));
-      try {
-        return await pipeline("token-classification", NER_MODEL, { dtype: "q8", device: hasGpu ? "webgpu" : browser ? "wasm" : undefined, progress_callback });
-      } catch (e) {
-        console.warn("NER webgpu failed, falling back to wasm:", e);
-        return await pipeline("token-classification", NER_MODEL, { dtype: "q8", device: browser ? "wasm" : undefined, progress_callback });
+      if (typeof window !== "undefined") {
+        // Match the bundled ONNX Runtime version; CDN WASM copies are unavailable for this build.
+        ort.env.wasm.wasmPaths = { mjs: "/ort/ort-wasm-simd-threaded.mjs", wasm: "/ort/ort-wasm-simd-threaded.wasm" };
       }
+      const tokenizer = await AutoTokenizer.from_pretrained(NER_MODEL, { revision: MODEL_REVISION });
+      const response = await fetch(MODEL_URL);
+      if (!response.ok) throw new Error(`PII model download failed: ${response.status}`);
+      const total = Number(response.headers.get("content-length")) || 0;
+      let model: Uint8Array;
+      if (response.body && total) {
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let loaded = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          loaded += value.byteLength;
+          onProgress?.(Math.min(0.95, loaded / total * 0.95));
+        }
+        model = new Uint8Array(loaded);
+        let pos = 0;
+        for (const chunk of chunks) { model.set(chunk, pos); pos += chunk.byteLength; }
+      } else {
+        model = new Uint8Array(await response.arrayBuffer());
+      }
+      const session = await ort.InferenceSession.create(model, { executionProviders: [typeof window === "undefined" ? "cpu" : "wasm"] });
+      onProgress?.(1);
+      return async (text: string) => {
+        const tokens = tokenizer(text);
+        const outputs = await session.run({
+          input_ids: new ort.Tensor("int64", tokens.input_ids.data as BigInt64Array, tokens.input_ids.dims),
+          attention_mask: new ort.Tensor("int64", tokens.attention_mask.data as BigInt64Array, tokens.attention_mask.dims),
+        });
+        const logits = outputs.logits.data as Float32Array;
+        const width = NER_LABELS.length * 2 + 1;
+        const ids = tokens.input_ids.data as BigInt64Array;
+        const out: NerOut = [];
+        for (let i = 0; i < ids.length; i++) {
+          const start = i * width;
+          let best = 0;
+          for (let j = 1; j < width; j++) if (logits[start + j] > logits[start + best]) best = j;
+          if (!best) continue;
+          const word = tokenizer.decode([Number(ids[i])], { skip_special_tokens: true });
+          if (!word) continue;
+          let sum = 0;
+          for (let j = 0; j < width; j++) sum += Math.exp(logits[start + j] - logits[start + best]);
+          out.push({ entity: `${best % 2 ? "B" : "I"}-${NER_LABELS[Math.floor((best - 1) / 2)]}`, score: 1 / sum, word });
+        }
+        return out;
+      };
     })();
     nerPromise.catch(() => (nerPromise = null));
   }
@@ -95,7 +140,7 @@ export async function detectModel(text: string, onProgress?: (pct: number) => vo
   const spans: PiiSpan[] = [];
   const chunks = chunk(text, 400);
   for (const c of chunks) {
-    const out = (await ner(c.text, { ignore_labels: ["O"] })) as NerOut;
+    const out = await ner(c.text);
     let cursor = 0;
     let cur: { type: PiiType; start: number; end: number; score: number } | null = null;
     const flush = () => {
@@ -107,7 +152,7 @@ export async function detectModel(text: string, onProgress?: (pct: number) => vo
         // A large city alone does not identify anyone; list it but leave it visible unless the user ticks it.
         const bigCity = cur.type === "city" && /^(?:mun\.\s*)?(?:chi[șşs]in[ăa]u|кишин[её]в)$/iu.test(t.trim());
         if (!noise)
-          spans.push({ id: `m${cur.start}`, start: cur.start, end: cur.end, text: t, type: cur.type, source: "model", score: cur.score, redact: cur.score >= 0.5 && !bigCity });
+          spans.push({ id: `m${cur.start}`, start: cur.start, end: cur.end, text: t, type: cur.type, source: "model", score: cur.score, redact: cur.score >= 0.25 && !bigCity });
       }
       cur = null;
     };
@@ -115,11 +160,13 @@ export async function detectModel(text: string, onProgress?: (pct: number) => vo
       const label = tok.entity.replace(/^[BI]-/, "");
       const type = NER_MAP[label];
       const piece = tok.word.replace(/^##|^▁|^Ġ/, "");
-      if (!type || !piece) { flush(); continue; }
+      if (!type || !piece.trim()) { flush(); continue; }
       const found = c.text.indexOf(piece, cursor);
       if (found < 0) continue;
-      const s = c.offset + found;
-      const e = s + piece.length;
+      const leading = piece.length - piece.trimStart().length;
+      const trailing = piece.length - piece.trimEnd().length;
+      const s = c.offset + found + leading;
+      const e = c.offset + found + piece.length - trailing;
       cursor = found + piece.length;
       const gap = cur ? text.slice(cur.end, s) : "";
       if (cur && cur.type === type && /^[\s-]{0,2}$/.test(gap) && !tok.entity.startsWith("B-")) {

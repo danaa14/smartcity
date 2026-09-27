@@ -12,7 +12,7 @@ import { useConversations } from "../ConversationProvider";
 import type { SavedTurn } from "@/lib/chat/types";
 import { VoiceCall } from "./VoiceCall";
 import { humanize } from "@/lib/answer/tone";
-import { detectRules, detectModel, mergeSpans, redactText } from "@/lib/scan/pii";
+import { detectRules, detectModel, isMobileDevice, mergeSpans, redactText } from "@/lib/scan/pii";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
 type DocTurn = { kind: "doc"; id: number; file?: File; name?: string; goal: string; ctx?: DocContext };
@@ -30,9 +30,10 @@ type ServerEvent =
   | { type: "answer"; answer: Answer }
   | { type: "error"; message: string };
 
-async function privateText(text: string): Promise<string> {
+async function privateText(text: string, onProgress?: (pct: number) => void): Promise<string> {
   if (!text.trim()) return text;
-  const spans = mergeSpans([...detectRules(text), ...await detectModel(text)], text);
+  if (isMobileDevice()) return redactText(text, mergeSpans(detectRules(text), text));
+  const spans = mergeSpans([...detectRules(text), ...await detectModel(text, onProgress)], text);
   return redactText(text, spans);
 }
 
@@ -73,7 +74,8 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const [sheet, setSheet] = useState<Sheet>("faq");
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [validation, setValidation] = useState(false);
-  const [privacyError, setPrivacyError] = useState(false);
+  const [privacyError, setPrivacyError] = useState<"timeout" | "failed" | null>(null);
+  const [privacyProgress, setPrivacyProgress] = useState<number | null>(null);
   const [dropping, setDropping] = useState(false);
   const [fileErr, setFileErr] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -94,21 +96,30 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     if (!original) { setValidation(true); input.current?.focus(); return; }
     pending.current = true;
     setBusy(true);
-    setPrivacyError(false);
+    setPrivacyError(null);
+    setPrivacyProgress(0);
     // Created before the privacy check, which can take seconds while the local model loads:
     // leaving the chat meanwhile must cancel the question instead of sending it afterwards.
     const abort = new AbortController();
     controller.current = abort;
     let text = original;
+    const privacyTimeout = setTimeout(() => abort.abort(), 60000);
     try {
-      text = await privateText(original);
+      text = await Promise.race([
+        privateText(original, (pct) => { if (!abort.signal.aborted) setPrivacyProgress(Math.round(pct * 100)); }),
+        new Promise<never>((_, reject) => abort.signal.addEventListener("abort", () => reject(new Error("privacy_timeout")), { once: true })),
+      ]);
     } catch {
-      setPrivacyError(true);
+      setPrivacyError(abort.signal.aborted ? "timeout" : "failed");
       pending.current = false;
       setBusy(false);
+      setPrivacyProgress(null);
       return;
+    } finally {
+      clearTimeout(privacyTimeout);
     }
-    if (abort.signal.aborted) { pending.current = false; return; }
+    setPrivacyProgress(null);
+    if (abort.signal.aborted) { pending.current = false; setBusy(false); return; }
     setValidation(false);
     setDraft("");
     const id = retryId ?? ++sequence.current;
@@ -178,7 +189,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     try {
       goal = await privateText(draft.trim().slice(0, 300));
     } catch {
-      setPrivacyError(true);
+      setPrivacyError("failed");
       return;
     }
     setDraft("");
@@ -297,9 +308,10 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
-        {privacyError && <p className="composer-error" role="alert">{t({ ro: "Nu am putut verifica datele personale. Mesajul nu a fost trimis. Încearcă din nou.", ru: "Не удалось проверить личные данные. Сообщение не отправлено. Повторите попытку." })}</p>}
+        {privacyProgress !== null && <p className="composer-hint" role="status">{t({ ro: `Verific datele personale pe dispozitiv (${privacyProgress}%). Mesajul nu pleacă până la verificare.`, ru: `Проверяю личные данные на устройстве (${privacyProgress}%). Сообщение пока не отправлено.` })}</p>}
+        {privacyError && <p className="composer-error" role="alert">{privacyError === "timeout" ? t({ ro: "Verificarea datelor personale nu s-a terminat în 60 de secunde. Mesajul nu a fost trimis. Verifică conexiunea și încearcă din nou.", ru: "Проверка личных данных не завершилась за 60 секунд. Сообщение не отправлено. Проверьте соединение и повторите попытку." }) : t({ ro: "Nu am putut verifica datele personale. Mesajul nu a fost trimis. Încearcă din nou.", ru: "Не удалось проверить личные данные. Сообщение не отправлено. Повторите попытку." })}</p>}
         {fileErr && <p className="composer-error" role="alert">{t({ ro: "Fișierul depășește 10 MB. Încearcă o fotografie mai mică.", ru: "Файл больше 10 МБ. Попробуйте фото меньшего размера." })}</p>}
-        <p id="chat-hint" className="composer-hint">{t({ ro: "Datele detectate sunt mascate înainte de trimitere. Evită totuși datele sensibile: detectarea poate rata unele.", ru: "Обнаруженные данные скрываются перед отправкой. Не вводите конфиденциальные данные: некоторые могут быть пропущены." })}</p>
+        <p id="chat-hint" className="composer-hint">{t({ ro: "Datele detectate sunt mascate înainte de trimitere. Pe telefon se folosesc doar reguli locale; evită datele sensibile, fiindcă unele pot fi ratate.", ru: "Обнаруженные данные скрываются перед отправкой. На телефоне используются только локальные правила; не вводите конфиденциальные данные, так как некоторые могут быть пропущены." })}</p>
         <p className="sr-only" role="status">{busy ? t({ ro: "Se caută răspunsul.", ru: "Идёт поиск ответа." }) : settled(turns.at(-1)) ? t({ ro: "Răspunsul este gata.", ru: "Ответ готов." }) : ""}</p>
       </div>
 
