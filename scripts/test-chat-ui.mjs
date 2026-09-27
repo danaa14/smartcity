@@ -54,6 +54,36 @@ async function page(lang = "ro") {
   await p.context().close();
 }
 
+// 1c. The on-device name model (~280 MB) never holds the first question: structured
+//     identifiers are masked by the rules at once, and once the model has loaded (it starts
+//     while the person types) names are masked too.
+{
+  const p = await page();
+  const bodies = [];
+  p.on("request", (r) => { if (r.url().includes("/api/ask")) bodies.push({ at: Date.now(), body: r.postData() ?? "" }); });
+  await p.goto(`${BASE}/intreaba`);
+  await p.waitForLoadState("networkidle");
+  await p.fill("#chat-message", "Codul meu IDNP este 2001234567890, cum depun o petiție?");
+  const t0 = Date.now();
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.querySelectorAll("[id$='-ans-h'], .chat-error").length >= 1, null, { timeout: 60000 });
+  const sentAfter = bodies[0] ? bodies[0].at - t0 : Infinity;
+  check("privacy: first question sent without waiting for the model", sentAfter < 4000, `${sentAfter} ms`);
+  check("privacy: IDNP masked before sending", bodies[0] && !bodies[0].body.includes("2001234567890"));
+  // The model keeps loading in the background; once it is ready, names are masked as before.
+  let second = "";
+  for (let i = 0, n = 2; i < 24; i++, n++) {
+    await p.waitForTimeout(5000);
+    await p.fill("#chat-message", "Mă numesc Ion Popescu și vreau să depun o petiție.");
+    await p.keyboard.press("Enter");
+    await p.waitForFunction((k) => document.querySelectorAll("[id$='-ans-h'], .chat-error").length >= k, n, { timeout: 60000 });
+    second = bodies.at(-1)?.body ?? "";
+    if (second && !JSON.parse(second).question.includes("Popescu")) break;
+  }
+  check("privacy: names masked once the model has loaded", second.length > 0 && !JSON.parse(second).question.includes("Popescu"), JSON.parse(second || "{}").question);
+  await p.context().close();
+}
+
 // 2. Text typed before the session check finishes is not wiped.
 {
   const p = await page();

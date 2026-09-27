@@ -12,7 +12,7 @@ import { useConversations } from "../ConversationProvider";
 import type { SavedTurn } from "@/lib/chat/types";
 import { VoiceCall } from "./VoiceCall";
 import { humanize } from "@/lib/answer/tone";
-import { detectRules, detectModel, mergeSpans, redactText } from "@/lib/scan/pii";
+import { detectRules, detectModel, loadNer, mergeSpans, redactText } from "@/lib/scan/pii";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
 type DocTurn = { kind: "doc"; id: number; file?: File; name?: string; goal: string; ctx?: DocContext };
@@ -30,10 +30,29 @@ type ServerEvent =
   | { type: "answer"; answer: Answer }
   | { type: "error"; message: string };
 
-async function privateText(text: string): Promise<string> {
+/**
+ * How long a question waits for the on-device name model (~280 MB, the smallest published
+ * variant) before it is sent with the rules alone. The rules mask every structured identifier
+ * (IDNP, phone, e-mail, IBAN, card, ID document, plate, date, street address) and are what the
+ * server enforces; the model adds names once loaded. It starts loading as the person types.
+ */
+const NAME_MODEL_WAIT_MS = 1200;
+
+/** Starts the name model in the background; a failed download is retried on the next call. */
+function warmNameModel() {
+  loadNer().catch(() => {});
+}
+
+async function privateText(text: string, waitMs = NAME_MODEL_WAIT_MS): Promise<string> {
   if (!text.trim()) return text;
-  const spans = mergeSpans([...detectRules(text), ...await detectModel(text)], text);
-  return redactText(text, spans);
+  const rules = detectRules(text);
+  const ready = await Promise.race([
+    loadNer().then(() => true, () => false),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), waitMs)),
+  ]);
+  // A model that fails to load or run must not block the chat: the rules still apply.
+  const model = ready ? await detectModel(text).catch(() => []) : [];
+  return redactText(text, mergeSpans([...rules, ...model], text));
 }
 
 const FAQ = [
@@ -118,7 +137,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     const timeout = setTimeout(() => abort.abort(), 100000);
     const patch = (fields: Partial<AskTurn>) => setTurns((prev) => prev.map((turn) => (turn.id === id && turn.kind === "ask" ? { ...turn, ...fields } : turn)));
     try {
-      const safeHistory = await Promise.all(historyRef.current.map(async (turn) => ({ ...turn, content: await privateText(turn.content) })));
+      const safeHistory = await Promise.all(historyRef.current.map(async (turn) => ({ ...turn, content: await privateText(turn.content, 0) })));
       const response = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
@@ -295,7 +314,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           <button type="button" className="composer-tools" aria-label={t({ ro: "Adaugă un document sau pregătește o sesizare", ru: "Добавить документ или подготовить обращение" })} onClick={(e) => openSheet("tools", e.currentTarget)}><Icon name="plus" /></button>
           <input ref={filePicker} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => { attach(e.target.files?.[0]); e.target.value = ""; }} />
           <label htmlFor="chat-message" className="sr-only">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label>
-          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
+          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); warmNameModel(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
