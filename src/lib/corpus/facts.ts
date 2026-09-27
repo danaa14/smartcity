@@ -10,6 +10,7 @@ export const FACTS: Fact[] = [
     id: "w-cerere",
     topic: "water-contract",
     aspects: ["procedure"],
+    keywords: ["cerere tip", "formular contract", "depun contract", "заявление на договор"],
     core: true,
     text: {
       ro: "Pentru contract completați o cerere tip (la sediul Apă-Canal sau pe site) și anexați copiile actelor din lista „Documente”.",
@@ -21,6 +22,10 @@ export const FACTS: Fact[] = [
     id: "w-docs",
     topic: "water-contract",
     aspects: ["documents"],
+    keywords: [
+      "acte contract", "documente contract", "buletin", "act proprietate",
+      "coproprietar", "документы для договора", "право собственности",
+    ],
     core: true,
     text: {
       ro: "Pentru un apartament, lista include: cererea, copia actului de identitate al proprietarului, copia actului de proprietate (sau alt drept real) și declarația de coproprietar, dacă există coproprietar.",
@@ -32,6 +37,10 @@ export const FACTS: Fact[] = [
     id: "w-contor-optional",
     topic: "water-contract",
     aspects: ["documents"],
+    keywords: [
+      "buletin metrologic", "verificare metrologica", "verificare metrologică",
+      "contor optional", "метрологический документ", "обязательна поверка",
+    ],
     text: {
       ro: "Copia buletinului de verificare metrologică a contorului este marcată pe pagină ca opțională.",
       ru: "Копия свидетельства о метрологической поверке счётчика отмечена на странице как необязательная.",
@@ -42,6 +51,10 @@ export const FACTS: Fact[] = [
     id: "w-factura",
     topic: "water-contract",
     aspects: ["documents"],
+    keywords: [
+      "ultima factura", "ultima factură", "confirmare datorii",
+      "sigilare contor", "последний счёт", "опломбирование счётчика",
+    ],
     text: {
       ro: "Lista mai menționează ultima factură achitată (sau confirmarea gestionarului blocului despre datorii) și acordul proprietarului privind sigilarea contorului.",
       ru: "В списке также указаны последний оплаченный счёт (или подтверждение управляющего домом о долгах) и согласие владельца на опломбирование счётчика.",
@@ -56,6 +69,10 @@ export const FACTS: Fact[] = [
     id: "w-datorii",
     topic: "water-contract",
     aspects: ["obligation", "procedure"],
+    keywords: [
+      "datorii", "datorie apa", "datorie apă", "achitare datorii",
+      "долг за воду", "погасить долг",
+    ],
     core: true,
     text: {
       ro: "Pentru încheierea contractului direct trebuie achitate toate datoriile la zi pentru apă și canalizare.",
@@ -67,6 +84,11 @@ export const FACTS: Fact[] = [
     id: "w-15zile",
     topic: "water-contract",
     aspects: ["time", "obligation"],
+    keywords: [
+      "15 zile", "termen contract", "dupa cumparare", "după cumpărare",
+      "inregistrarea proprietatii", "înregistrarea proprietății",
+      "срок договора", "после покупки квартиры", "15 дней",
+    ],
     core: true,
     text: {
       ro: "Dacă ați dobândit în proprietate un imobil care nu a fost deconectat, trebuie să cereți contractul în 15 zile de la înregistrarea dreptului de proprietate.",
@@ -88,7 +110,13 @@ export const FACTS: Fact[] = [
     id: "w-chirias",
     topic: "water-contract",
     aspects: ["procedure"],
-    keywords: ["chirias", "chirie", "arenda", "locatar", "аренд", "арендатор", "съемщик", "квартирант"],
+    keywords: ["chirias", "chirie", "arenda", "locatar", "аренд", "арендатор", "съемщик", "квартирант", "nu sunt proprietar",
+      "chirie apartament",
+      "plata preventiva",
+      "plată preventivă",
+      "не собственник",
+      "предоплата",
+    ],
     text: {
       ro: "Contractul poate fi încheiat și de cineva care nu este proprietar, cu condiția unei plăți preventive egale cu consumul mediu din ultimele trei perioade de facturare.",
       ru: "Договор может заключить и не владелец — при условии предоплаты, равной среднему потреблению за три последних расчётных периода.",
@@ -130,6 +158,10 @@ export const FACTS: Fact[] = [
     id: "t-potabila",
     topic: "water-tariff",
     aspects: ["cost"],
+    keywords: [
+      "apa potabila", "apă potabilă", "tarif apa", "tarif apă",
+      "14,03", "14.03", "питьевая вода", "тариф воды",
+    ],
     core: true,
     text: {
       ro: "Tariful pentru apă potabilă (Apă-Canal Chișinău) este 14,03 lei/m³, conform Hotărârii ANRE nr. 479.",
@@ -141,17 +173,43 @@ export const FACTS: Fact[] = [
     id: "t-canal",
     topic: "water-tariff",
     aspects: ["cost"],
+    keywords: [
+      "canalizare",
+      "epurare",
+      "ape uzate",
+      "casnic",
+      "casnici",
+      "noncasnic",
+      "канализац",
+      "сточн",
+      "бытов",
+      "небытов",
+    ],
     core: true,
     text: {
-      ro: "Canalizarea și epurarea costă 6,63 lei/m³ pentru consumatorii casnici și 10,16 lei/m³ pentru cei noncasnici.",
-      ru: "Канализация и очистка — 6,63 лей/м³ для бытовых и 10,16 лей/м³ для небытовых потребителей.",
+      ro: "Pentru consumatorii casnici, tariful pentru canalizare și epurare este 6,63 lei/m³. Pagina indică faptul că ultimele tarife aprobate sunt în vigoare din 06.08.2026.",
+      ru: "Для бытовых потребителей тариф на канализацию и очистку составляет 6,63 лея/м³. На странице указано, что последние утверждённые тарифы действуют с 06.08.2026.",
     },
-    cites: [{ passageId: "acc-tarif#p-canal", quote: "pentru consumatorii casnici, în mărime de 6,63 lei/m 3 ; - pentru consumatorii noncasnici, în mărime de 10,16 lei/m 3" }],
-  },
+    cites: [
+      {
+        passageId: "acc-tarif#p-canal",
+        quote: "pentru consumatorii casnici, în mărime de 6,63 lei/m 3",
+      },
+      {
+        passageId: "acc-tarif#p-vigoare",
+        quote: "în vigoare cu începere din 06.08.2026",
+      },
+    ],
+    },
   {
     id: "t-vigoare",
     topic: "water-tariff",
     aspects: ["validity", "time"],
+    keywords: [
+      "tarif actual", "tarif in vigoare", "tarif în vigoare",
+      "ultimele tarife", "06.08.2026", "06 august 2026",
+      "действующий тариф", "актуальный тариф",
+    ],
     core: true,
     text: {
       ro: "Pagina declară că aceste tarife sunt în vigoare din 06.08.2026.",
@@ -163,6 +221,11 @@ export const FACTS: Fact[] = [
     id: "t-abrog",
     topic: "water-tariff",
     aspects: ["validity"],
+    keywords: [
+      "12,99", "12.99", "14,03", "14.03", "tarif vechi",
+      "tarif nou", "tarif anterior", "care tarif actual",
+      "старый тариф", "новый тариф", "какой тариф действует",
+    ],
     core: true,
     text: {
       ro: "Hotărârea nr. 479 abrogă hotărârea anterioară ANRE nr. 120 din 18.03.2025 (tariful anterior la apă potabilă era 12,99 lei/m³).",
@@ -201,7 +264,12 @@ export const FACTS: Fact[] = [
     id: "t-plata",
     topic: "water-tariff",
     aspects: ["procedure", "channel"],
-    keywords: ["plati", "platesc", "achit", "factura", "оплат", "плат", "счет"],
+    keywords: [
+      "plati", "platesc", "achit", "factura",
+      "casierie", "posta moldovei", "poșta moldovei",
+      "banca", "bancă", "unde platesc", "unde plătesc",
+      "оплат", "плат", "счет", "касса", "почта", "банк",
+    ],
     text: {
       ro: "Factura se poate plăti prin web-banking, la oficiile Poșta Moldovei și sucursalele băncilor sau la casieria Apă-Canal din str. Albișoara 38.",
       ru: "Счёт можно оплатить через веб-банкинг, в отделениях Poșta Moldovei и банков или в кассе Apă-Canal на ул. Албишоара 38.",
@@ -215,7 +283,13 @@ export const FACTS: Fact[] = [
     id: "t-indicii",
     topic: "water-tariff",
     aspects: ["procedure", "channel"],
-    keywords: ["indici", "indicatii", "contor", "показан", "счетчик"],
+    keywords: [
+      "indici", "indicatii", "indicații", "contor",
+      "transmit indici", "trimit indici", "citire contor",
+      "email contor", "e-mail contor", "drc@acc.md",
+      "viber", "whatsapp", "telegram",
+      "показан", "счетчик", "передать показания", "водомер",
+    ],
     text: {
       ro: "Indicii contorului pot fi transmiși prin Viber, WhatsApp, Telegram sau apel la numerele din factură, ori pe e-mail la drc@acc.md.",
       ru: "Показания счётчика можно передать через Viber, WhatsApp, Telegram или звонком по номерам из счёта, либо на drc@acc.md.",
@@ -226,6 +300,11 @@ export const FACTS: Fact[] = [
     id: "t-contact-facturare",
     topic: "water-tariff",
     aspects: ["contact"],
+    keywords: [
+      "telefon factura", "telefon factură", "consultanta facturare",
+      "consultanță facturare", "256 955", "857 555",
+      "счёт консультация",
+    ],
     text: {
       ro: "Consultanță facturare și achitări Apă-Canal: 0 (22) 256-955 sau 0 (22) 857-555.",
       ru: "Консультации по счетам и оплате Apă-Canal: 0 (22) 256-955 или 0 (22) 857-555.",
@@ -237,6 +316,10 @@ export const FACTS: Fact[] = [
     id: "p-online",
     topic: "petition",
     aspects: ["procedure", "channel"],
+    keywords: [
+      "petitie online", "petiție online", "depun petitie", "depun petiție",
+      "formular petitie", "formular petiție", "подать петицию", "онлайн форма",
+    ],
     core: true,
     text: {
       ro: "Primăria are un formular online pentru transmiterea unei petiții sau sesizări.",
@@ -251,6 +334,11 @@ export const FACTS: Fact[] = [
     id: "p-msign",
     topic: "petition",
     aspects: ["procedure", "obligation"],
+    keywords: [
+      "semnatura electronica", "semnătură electronică", "msign",
+      "semnez electronic", "fara semnatura", "fără semnătură",
+      "электронная подпись", "без подписи",
+    ],
     core: true,
     text: {
       ro: "Petiția trebuie semnată electronic prin MSIGN; altfel, conform paginii, nu va fi examinată.",
@@ -265,6 +353,11 @@ export const FACTS: Fact[] = [
     id: "p-pdf",
     topic: "petition",
     aspects: ["documents", "procedure"],
+    keywords: [
+      "format pdf", "pdf", "10 mb", "10mb", "dimensiune fisier",
+      "dimensiune fișier", "format petitie", "format petiție",
+      "формат pdf", "10 мб", "размер файла",
+    ],
     core: true,
     text: {
       ro: "Formularul se salvează ca PDF, conține doar text, iar MSIGN semnează fișiere PDF de cel mult 10 MB.",
@@ -279,6 +372,10 @@ export const FACTS: Fact[] = [
     id: "p-atasamente",
     topic: "petition",
     aspects: ["documents"],
+    keywords: [
+      "atasamente", "atașamente", "docx", "jpg", "arhiva", "arhivă",
+      "вложения",
+    ],
     text: {
       ro: "Alte materiale se anexează ca atașamente (arhive); petiția se încarcă în format .docx, .pdf sau .jpg.",
       ru: "Прочие материалы прикладываются как вложения (архивы); сама петиция загружается в формате .docx, .pdf или .jpg.",
@@ -289,6 +386,11 @@ export const FACTS: Fact[] = [
     id: "p-raspuns",
     topic: "petition",
     aspects: ["channel"],
+    keywords: [
+      "raspuns petitie", "răspuns petiție", "email", "pe hartie",
+      "pe hârtie", "prin posta", "prin poștă",
+      "ответ на петицию", "по электронной почте", "по почте",
+    ],
     text: {
       ro: "Puteți alege să primiți răspunsul prin e-mail sau pe hârtie, prin poștă.",
       ru: "Можно выбрать получение ответа по e-mail или на бумаге по почте.",
@@ -332,6 +434,12 @@ export const FACTS: Fact[] = [
     topic: "waste",
     aspects: ["cost"],
     core: true,
+    keywords: [
+      "tarif gunoi", "tarif deseuri", "tarif deșeuri",
+      "17,50", "17.50", "35,00", "35.00",
+      "sector particular", "la bloc",
+      "мусор", "вывоз мусора", "частный сектор", "многоэтажке",
+    ],
     text: {
       ro: "Tariful lunar pentru o persoană fizică: 17,50 lei la bloc și 35,00 lei în sectorul particular.",
       ru: "Месячный тариф для физлица: 17,50 лей в многоквартирном доме и 35,00 лей в частном секторе.",
@@ -346,6 +454,11 @@ export const FACTS: Fact[] = [
     id: "d-acte",
     topic: "waste",
     aspects: ["documents"],
+    keywords: [
+      "acte gunoi", "documente deseuri", "documente deșeuri",
+      "contract salubritate", "buletin", "extras registru",
+      "документы на вывоз мусора",
+    ],
     core: true,
     text: {
       ro: "Pentru o casă în sectorul particular dată în exploatare: copia buletinului, extrasul din Registrul bunurilor imobile sau contractul de vânzare-cumpărare, actele despre persoanele cu viză de reședință și certificatul despre componența familiei.",
@@ -357,6 +470,12 @@ export const FACTS: Fact[] = [
     id: "d-contact",
     topic: "waste",
     aspects: ["contact"],
+    keywords: [
+      "reclamatie autosalubritate", "reclamație autosalubritate",
+      "contracte si reclamatii", "contracte și reclamații",
+      "dispecerat gunoi", "74 06 72", "74 75 20",
+      "жалоба autosalubritate", "договоры и жалобы",
+    ],
     text: {
       ro: "Autosalubritate — contracte și reclamații: (022) 74-06-72; dispecerat: (022) 74-75-20.",
       ru: "Autosalubritate — договоры и жалобы: (022) 74-06-72; диспетчерская: (022) 74-75-20.",
@@ -378,6 +497,12 @@ export const FACTS: Fact[] = [
     id: "a-cine",
     topic: "trees",
     aspects: ["procedure", "obligation"],
+    keywords: [
+      "examinare arbore", "curatare arbore", "curățare arbore",
+      "defrisare", "defrișare", "taiere copac", "tăiere copac",
+      "asociatia blocului", "asociația blocului",
+      "обрезка дерева", "вырубка дерева",
+    ],
     core: true,
     text: {
       ro: "Cererea pentru examinarea stării fitosanitare a arborilor (curățare, defrișare) se depune de asociația blocului sau de locatarii blocului.",
@@ -389,6 +514,11 @@ export const FACTS: Fact[] = [
     id: "a-acord",
     topic: "trees",
     aspects: ["documents", "obligation"],
+    keywords: [
+      "acord locatari", "acordul locatarilor",
+      "anexa cerere", "anexez cerere",
+      "согласие жильцов", "приложение к заявлению",
+    ],
     core: true,
     text: {
       ro: "La cerere se anexează acordul locatarilor; fără el, conform paginii, cererea nu va fi acceptată.",
@@ -417,6 +547,11 @@ export const FACTS: Fact[] = [
     id: "a-contact",
     topic: "trees",
     aspects: ["contact"],
+    keywords: [
+      "contact agsv", "email agsv", "e-mail agsv",
+      "telefon agsv", "anticamera agsv", "anticamera@agsv.md",
+      "контакты agsv", "электронная почта agsv",
+    ],
     text: {
       ro: "AGSV — anticamera: 022 24 27 25 / 067 880 701, anticamera@agsv.md; str. Alexandr Pușkin 62.",
       ru: "AGSV — приёмная: 022 24 27 25 / 067 880 701, anticamera@agsv.md; ул. Александр Пушкин 62.",
