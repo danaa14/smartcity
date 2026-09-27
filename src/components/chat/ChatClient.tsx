@@ -31,28 +31,28 @@ type ServerEvent =
   | { type: "error"; message: string };
 
 /**
- * How long a question waits for the on-device name model (~280 MB, the smallest published
- * variant) before it is sent with the rules alone. The rules mask every structured identifier
- * (IDNP, phone, e-mail, IBAN, card, ID document, plate, date, street address) and are what the
- * server enforces; the model adds names once loaded. It starts loading as the person types.
+ * Names are masked by the on-device model (~280 MB, the smallest published variant), and no
+ * question leaves the browser before it has been checked by it. What keeps the first question
+ * fast is starting the download as soon as the person focuses or types in the box, so it runs
+ * while they write instead of after they press send. Progress is shared with the composer.
  */
-const NAME_MODEL_WAIT_MS = 1200;
+let nameModelProgress: number | null = null;
+const nameModelListeners = new Set<(pct: number | null) => void>();
+let nameModelReady = false;
 
-/** Starts the name model in the background; a failed download is retried on the next call. */
 function warmNameModel() {
-  loadNer().catch(() => {});
+  return loadNer((pct) => {
+    nameModelProgress = pct;
+    nameModelListeners.forEach((listener) => listener(pct));
+  }).then((ner) => { nameModelReady = true; return ner; });
 }
 
-async function privateText(text: string, waitMs = NAME_MODEL_WAIT_MS): Promise<string> {
+async function privateText(text: string): Promise<string> {
   if (!text.trim()) return text;
-  const rules = detectRules(text);
-  const ready = await Promise.race([
-    loadNer().then(() => true, () => false),
-    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), waitMs)),
-  ]);
-  // A model that fails to load or run must not block the chat: the rules still apply.
-  const model = ready ? await detectModel(text).catch(() => []) : [];
-  return redactText(text, mergeSpans([...rules, ...model], text));
+  // A download or model failure throws: the caller shows the privacy error and sends nothing.
+  await warmNameModel();
+  const spans = mergeSpans([...detectRules(text), ...await detectModel(text)], text);
+  return redactText(text, spans);
 }
 
 const FAQ = [
@@ -93,6 +93,13 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [validation, setValidation] = useState(false);
   const [privacyError, setPrivacyError] = useState(false);
+  // Download progress of the name model while a question waits for it (null: not waiting).
+  const [preparing, setPreparing] = useState<number | null>(null);
+  useEffect(() => {
+    const listener = (pct: number | null) => setPreparing((current) => (current === null ? null : pct ?? 0));
+    nameModelListeners.add(listener);
+    return () => { nameModelListeners.delete(listener); };
+  }, []);
   const [dropping, setDropping] = useState(false);
   const [fileErr, setFileErr] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -119,6 +126,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     const abort = new AbortController();
     controller.current = abort;
     let text = original;
+    if (!nameModelReady) setPreparing(nameModelProgress ?? 0);
     try {
       text = await privateText(original);
     } catch {
@@ -126,6 +134,8 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
       pending.current = false;
       setBusy(false);
       return;
+    } finally {
+      setPreparing(null);
     }
     if (abort.signal.aborted) { pending.current = false; return; }
     setValidation(false);
@@ -136,7 +146,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     const timeout = setTimeout(() => abort.abort(), 100000);
     const patch = (fields: Partial<AskTurn>) => setTurns((prev) => prev.map((turn) => (turn.id === id && turn.kind === "ask" ? { ...turn, ...fields } : turn)));
     try {
-      const safeHistory = await Promise.all(historyRef.current.map(async (turn) => ({ ...turn, content: await privateText(turn.content, 0) })));
+      const safeHistory = await Promise.all(historyRef.current.map(async (turn) => ({ ...turn, content: await privateText(turn.content) })));
       const response = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
@@ -312,10 +322,11 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
         <form className="chat-composer" onSubmit={(e) => { e.preventDefault(); void ask(draft); }}>
           <button type="button" className="composer-tools" aria-label={t({ ro: "Adaugă un document sau pregătește o sesizare", ru: "Добавить документ или подготовить обращение" })} onClick={(e) => openSheet("tools", e.currentTarget)}><Icon name="plus" /></button>
           <label htmlFor="chat-message" className="sr-only">{t({ ro: "Mesajul tău", ru: "Ваше сообщение" })}</label>
-          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onChange={(e) => { setDraft(e.target.value); setValidation(false); warmNameModel(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
+          <textarea ref={input} id="chat-message" rows={1} maxLength={500} value={draft} onFocus={() => { warmNameModel().catch(() => {}); }} onChange={(e) => { setDraft(e.target.value); setValidation(false); warmNameModel().catch(() => {}); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(draft); } }} placeholder={t({ ro: "Scrie întrebarea ta…", ru: "Напишите ваш вопрос…" })} aria-invalid={validation || undefined} aria-describedby={validation ? "chat-validation" : "chat-hint"} />
           <button className="send-button" type="submit" disabled={busy || !draft.trim()} aria-label={t({ ro: "Trimite întrebarea", ru: "Отправить вопрос" })}>{busy ? <span className="send-spinner" /> : <Icon name="arrow" />}</button>
         </form>
         {validation && <p id="chat-validation" className="composer-error" role="alert">{t({ ro: "Scrie o întrebare pentru a începe.", ru: "Напишите вопрос, чтобы начать." })}</p>}
+        {preparing !== null && <p className="composer-hint" role="status">{t({ ro: "Pregătesc protecția datelor personale pe acest dispozitiv, doar prima dată", ru: "Готовлю защиту личных данных на этом устройстве, только в первый раз" })}… {Math.round(preparing * 100)}%</p>}
         {privacyError && <p className="composer-error" role="alert">{t({ ro: "Nu am putut verifica datele personale. Mesajul nu a fost trimis. Încearcă din nou.", ru: "Не удалось проверить личные данные. Сообщение не отправлено. Повторите попытку." })}</p>}
         {fileErr && <p className="composer-error" role="alert">{t({ ro: "Fișierul depășește 10 MB. Încearcă o fotografie mai mică.", ru: "Файл больше 10 МБ. Попробуйте фото меньшего размера." })}</p>}
         <p id="chat-hint" className="composer-hint">{t({ ro: "Datele detectate sunt mascate înainte de trimitere. Evită totuși datele sensibile: detectarea poate rata unele.", ru: "Обнаруженные данные скрываются перед отправкой. Не вводите конфиденциальные данные: некоторые могут быть пропущены." })}</p>
