@@ -601,4 +601,51 @@ export const FACTS: Fact[] = [
   },
 ];
 
+const FACT_KEYWORD_SYNONYMS: Record<string, string[]> = {
+  "w-cerere": ["cerere de încheiere a contractului", "solicitare pentru contractul de apă", "completare formular Apă-Canal", "заявление на оформление договора", "запросить договор водоснабжения", "типовая форма заявления"],
+  "w-docs": ["acte necesare pentru contractul de apă", "copie buletin proprietar", "dovada dreptului asupra locuinței", "declarație coproprietar", "документы для оформления водоснабжения", "копия удостоверения владельца", "документ на право владения жильём", "декларация совладельца"],
+  "w-contor-optional": ["buletinul metrologic al apometrului", "verificarea metrologică a contorului", "actul de verificare a contorului este opțional", "свидетельство о поверке водомера", "метрологическая проверка счётчика необязательна"],
+  "w-factura": ["ultima factură achitată", "confirmare de la gestionarul blocului", "acord pentru plombarea contorului", "последняя оплаченная квитанция", "подтверждение управляющего о долгах", "согласие на опломбирование водомера"],
+  "w-datorii": ["datorii restante la apă și canalizare", "achitarea tuturor restanțelor", "fără datorii pentru contract direct", "погашение задолженности за воду", "оплатить все долги для прямого договора"],
+  "w-15zile": ["termen de 15 zile după cumpărarea imobilului", "înregistrarea dreptului asupra locuinței", "solicitare contract în 15 zile", "15 дней после регистрации собственности", "срок заключения договора после покупки жилья"],
+  "w-deconectare": ["deconectarea locului de consum", "operatorul poate opri alimentarea cu apă", "consecința nerespectării termenului contractului", "отключение места потребления", "оператор вправе отключить воду", "последствие нарушения срока договора"],
+  "w-chirias": ["persoană care locuiește în chirie", "contract pe alt drept decât proprietatea", "plată în avans pentru chiriaș", "съёмщик квартиры", "договор не на собственника", "предварительный платёж за три периода"],
+  "w-baza-legala": ["legislație privind serviciul de apă", "Legea 303 din 2013", "regulamentul Apă-Canal", "закон о водоснабжении", "закон 303/2013", "правила предоставления услуги водоснабжения"],
+  "w-contact-program": ["adresa sediului Apă-Canal", "programul de lucru Apă-Canal", "strada Albișoara 38", "адрес офиса Apă-Canal", "график работы Apă-Canal", "улица Албишоара 38"],
+  "w-contact-centru": ["telefon centrul multifuncțional Apă-Canal", "numărul centrului de deservire", "256-828 Apă-Canal", "телефон многофункционального центра Apă-Canal", "номер центра обслуживания 256-828"],
+  "t-potabila": ["preț apă potabilă Apă-Canal", "cost pe metru cub de apă", "tarif de furnizare a apei", "стоимость питьевого водоснабжения", "цена воды за кубометр", "тариф Apă-Canal на питьевую воду"],
+  "t-canal": ["cost canalizare casnici", "tarif epurare ape uzate", "preț canalizare pentru gospodării", "tarif canalizare noncasnici", "тариф на канализацию для бытовых потребителей", "стоимость очистки сточных вод", "тариф для небытовых потребителей"],
+  "t-vigoare": ["data intrării în vigoare a tarifelor", "de când se aplică tariful actual", "ultimul tarif aprobat", "дата вступления тарифа в силу", "с какого числа действует тариф", "последний утверждённый тариф"],
+  "t-abrog": ["tariful vechi comparat cu cel nou", "tarif anterior de 12,99 lei", "hotărâre ANRE abrogată", "какой тариф действует сейчас", "старый тариф 12,99 лея", "предыдущее постановление НАРЭ отменено", "сравнение старого и нового тарифа"],
+  "t-tva": ["taxa pe valoarea adăugată la tarif", "tarif cu TVA sau fără TVA", "include tariful TVA", "налог на добавленную стоимость", "тариф с НДС или без НДС", "включён ли НДС в тариф"],
+  "t-contest": ["contestarea hotărârii ANRE", "termen pentru contestație tarif", "contestarea tarifului la ANRE în 30 de zile", "обжаловать постановление НАРЭ", "срок обжалования тарифа", "оспорить тариф в течение 30 дней"],
+  "t-plata": ["modalități de achitare a facturii Apă-Canal", "plata apei la Poșta Moldovei", "plata facturii la sucursala băncii", "achitare la casieria Apă-Canal", "способы оплаты квитанции Apă-Canal", "оплата воды в почтовом отделении", "оплатить счёт в кассе Apă-Canal"],
+  "t-indicii": ["transmiterea citirii contorului de apă", "trimiterea indexului apometrului", "datele de pe contor", "передать показания водяного счётчика", "отправить данные водомера", "показания счётчика Apă-Canal"],
+  "t-contact-facturare": ["telefon pentru întrebări despre factură", "contact consultanță facturi Apă-Canal", "număr pentru achitări Apă-Canal", "телефон по вопросам счёта Apă-Canal", "консультация по оплате и счетам"],
+  "p-online": ["formular electronic pentru petiție", "depunere online a sesizării", "transmiterea unei plângeri la Primărie", "электронная форма обращения", "подача жалобы онлайн в примэрию", "направить петицию через сайт"],
+  "p-msign": ["semnătura electronică a petiției", "petiție nesemnată nu se examinează", "semnare petiție cu serviciul MSIGN", "электронная подпись петиции через MSIGN", "обращение без подписи не рассматривается", "подписание петиции сервисом MSIGN"],
+  "p-pdf": ["format PDF și limita de 10 MB", "formularul petiției numai text", "dimensiune maximă fișier MSIGN", "PDF не более 10 МБ для MSIGN", "форма петиции только с текстом", "максимальный размер подписываемого файла"],
+  "p-atasamente": ["fișiere anexate la petiție", "atașamente în arhivă", "formate acceptate pentru petiție", "файлы во вложении к петиции", "приложения в архиве", "допустимые форматы файла петиции"],
+  "p-raspuns": ["cum primesc răspuns la petiție", "răspuns în format electronic sau pe hârtie", "livrarea răspunsului prin poștă", "получение ответа на обращение", "электронный ответ или бумажное письмо", "ответ обычной почтой"],
+  "p-ghiseu": ["datele de contact ale Ghișeului Unic", "telefon și e-mail Primăria Chișinău", "programul Ghișeului Unic municipal", "контактные данные Единого окна мэрии", "телефон и электронная почта примэрии", "график Единого окна Кишинёва"],
+  "p-adresa": ["adresa sediului Primăriei Chișinău", "bd. Ștefan cel Mare și Sfânt nr. 83", "unde se află Primăria", "адрес здания примэрии Кишинёва", "бульвар Штефан чел Маре 83", "где находится мэрия"],
+  "d-exclusiv": ["cine colectează deșeurile în Chișinău", "prestatorul serviciului de salubrizare", "operatorul de evacuare a gunoiului", "кто собирает отходы в Кишинёве", "оператор вывоза бытового мусора", "кто оказывает услугу санитарной очистки"],
+  "d-tarif": ["tarif de evacuare a gunoiului pentru persoană", "preț lunar deșeuri la bloc și casă", "taxa de salubrizare sector particular", "тариф вывоза мусора для физлица", "ежемесячная плата за отходы в доме и частном секторе", "стоимость санитарной очистки"],
+  "d-acte": ["acte pentru contractul de evacuare a deșeurilor", "documente pentru gunoi la casă", "extras din Registrul bunurilor imobile", "документы для договора на вывоз отходов", "документы для частного дома", "выписка из реестра недвижимости"],
+  "d-contact": ["telefon reclamații Autosalubritate", "numărul secției contracte și reclamații", "dispecerat evacuare deșeuri", "номер для жалоб Autosalubritate", "телефон отдела договоров и жалоб", "диспетчерская по вывозу мусора"],
+  "d-adresa": ["adresa sediului Regiei Autosalubritate", "strada 27 Martie 1918 numărul 14", "unde este oficiul Autosalubritate", "адрес офиса Régie Autosalubritate", "улица 27 Марта 1918 дом 14", "где находится Autosalubritate"],
+  "a-cine": ["cine poate depune cerere pentru arbore", "solicitare de examinare fitosanitară", "tăierea copacilor de către asociația blocului", "кто подаёт заявление на обследование дерева", "фитосанитарное обследование дерева", "заявление на обрезку от ассоциации дома"],
+  "a-acord": ["acordul locatarilor anexat cererii", "consimțământul vecinilor din bloc", "document necesar pentru defrișare", "согласие жильцов прилагается к заявлению", "согласие соседей по дому", "документ для удаления дерева"],
+  "a-temei": ["temei legal pentru arbori și spații verzi", "Regulamentul spațiilor verzi punctele 32 și 33", "decizia CMC 6/10", "правовое основание для вырубки деревьев", "правила зелёных насаждений пункты 32 и 33", "решение МСК 6/10"],
+  "a-contact": ["telefon și e-mail anticamera AGSV", "contact Asociația de gospodărire a spațiilor verzi", "adresa AGSV pe str. Alexandr Pușkin", "телефон и почта приёмной AGSV", "контакты Ассоциации зелёных насаждений", "адрес AGSV улица Александру Пушкин"],
+  "demo-termen-30": ["DEMO termen terasă 30 zile calendaristice", "DEMO depunere cerere terasă cu 30 de zile înainte", "DEMO срок террасы 30 календарных дней", "DEMO подать заявление на террасу за 30 дней"],
+  "demo-termen-15": ["DEMO termen terasă 15 zile lucrătoare", "DEMO depunere cerere terasă cu 15 zile lucrătoare înainte", "DEMO срок террасы 15 рабочих дней", "DEMO подать заявление на террасу за 15 рабочих дней"],
+  "demo-schita": ["DEMO schiță de amplasare terasă", "DEMO planul de amplasare al terasei", "DEMO схема размещения террасы", "DEMO план летней площадки"],
+};
+
+for (const fact of FACTS) {
+  const additions = FACT_KEYWORD_SYNONYMS[fact.id] ?? [];
+  fact.keywords = [...new Set([...(fact.keywords ?? []), ...additions])];
+}
+
 export const FACT_BY_ID = new Map(FACTS.map((f) => [f.id, f]));
