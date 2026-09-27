@@ -18,7 +18,7 @@ await page.goto(`${BASE}/intreaba`, { waitUntil: "domcontentloaded" });
 await page.fill("#chat-message", "Cumpăr mașina — sunt corecți termenii pentru mine?");
 await page.click(".composer-tools");
 await page.waitForSelector(".tool-list", { state: "visible" });
-const docBtn = page.locator(".tool-list button").first();
+const docBtn = page.locator(".tool-list label.tool-file");
 if ((await docBtn.textContent())?.includes("document")) ok("SHEET ENTRY"); else fail("SHEET ENTRY");
 
 // The real path: the sheet entry opens the picker and closes the sheet behind it.
