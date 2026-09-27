@@ -7,8 +7,8 @@ import { ModelError } from "../ai/client";
 import { FACTS } from "../corpus/facts";
 import { PASSAGE_BY_ID } from "../corpus/passages";
 import { DOC_BY_ID } from "../corpus/docs";
-import { retrieve } from "../retrieval";
-import { normalize } from "../text";
+import { detectAspects, rankTopics, retrieve } from "../retrieval";
+import { normalize, tokens } from "../text";
 import type { Lang } from "../corpus/types";
 import type { Answer, Claim, ValidationReport } from "./types";
 import type { LlmDraft } from "./llm";
@@ -77,10 +77,12 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
   if (!found.grounded) return null;
   // Serving pre-written facts is only safe when retrieval is sure of the subject; otherwise
   // the user gets a confident answer to a question they did not ask.
-  const curated = found.informationNeeds.length === 1 && found.confident && base.claims.length > 0;
   // Curated claims already have exact citations and need no model round trip.
-  if (curated) return base;
-  if (!AI.enabled) return null;
+  if (found.informationNeeds.length === 1 && found.confident && base.claims.length > 0) return base;
+  // A multi-part question about that one subject still goes to the model part by part, but
+  // its curated answer (with the gaps named) is what is served offline or if drafting fails.
+  const curated = found.confident && base.claims.length > 0 && sameSubject(found.informationNeeds, base.topicId);
+  if (!AI.enabled) return curated ? base : null;
 
   // A passage-only match has no curated topic, so the pipeline's "not covered by the
   // indexed sources" gap no longer applies — the passages below ARE indexed sources.
@@ -127,7 +129,7 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
     };
     // Nothing survived validation: keep a curated answer if we have one, otherwise let the
     // caller abstain instead of filling the evidence gap from model memory.
-    if (!valid.length) return curated ? withFallback(start, "empty") : null;
+    if (!valid.length) return curated ? withFallback(base, "empty") : null;
 
     // Renumber: model claims first, then the route/contact citations already numbered by the pipeline.
     const order: string[] = [];
@@ -154,15 +156,15 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
     const missing = [
       ...start.missing,
       ...missingNeeds.map((need) => ({
-        ro: `Nu am putut confirma din pasajele oficiale: „${need}”.`,
-        ru: `Не удалось подтвердить по официальным фрагментам: «${need}».`,
+        ro: `Pentru „${need}” nu am o informație sigură — cel mai bine verificați direct la instituția responsabilă.`,
+        ru: `По вопросу «${need}» у меня нет точной информации — лучше уточнить напрямую в ответственном учреждении.`,
       })),
       ...drafts.flatMap((item) => item.draft.missing),
     ].filter((item, index, all) => all.findIndex((other) => other.ro === item.ro && other.ru === item.ru) === index);
     if (report.dropped.length)
       missing.push({
-        ro: `${report.dropped.length} afirmație(i) propuse de model au fost eliminate: citatul nu apărea exact în sursă.`,
-        ru: `${report.dropped.length} утверждение(й), предложенных моделью, удалено: цитата не совпадала с источником.`,
+        ro: `Câteva detalii (${report.dropped.length}) nu le-am putut verifica sigur, așa că le-am lăsat deoparte.`,
+        ru: `Некоторые детали (${report.dropped.length}) не удалось надёжно проверить, поэтому их здесь нет.`,
       });
     // A model-reported missing part or a dropped unverifiable claim must never be returned
     // as fully supported, even if the deterministic aspect detector missed that sub-question.
@@ -189,8 +191,24 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
   } catch (e) {
     const code = e instanceof ModelError ? e.code : "upstream";
     console.warn(`[answer] model fallback: ${code}`);
-    return curated ? withFallback(start, code) : null;
+    return curated ? withFallback(base, code) : null;
   }
+}
+
+/**
+ * "Cât costă și în cât timp se încheie contractul de apă?" splits into two needs, but both are
+ * about the one curated topic: the curated answer covers them aspect by aspect and names the
+ * gaps. A need naming another subject ("…și cine e primarul?") must not be silently dropped,
+ * so every part has to point at the same topic, or be a bare aspect fragment ("Cât costă").
+ */
+function sameSubject(needs: string[], topicId: string | null): boolean {
+  if (!topicId) return false;
+  return needs.every((need) => {
+    const aspects = detectAspects(need);
+    const top = rankTopics(need, aspects).filter((hit) => hit.topic.kind !== "demo" && hit.specific > 0)[0];
+    if (top) return top.topic.id === topicId;
+    return aspects.length > 0 && tokens(need).length <= 3;
+  });
 }
 
 function withFallback(base: Answer, code: string): Answer {

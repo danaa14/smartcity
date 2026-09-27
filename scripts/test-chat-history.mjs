@@ -10,12 +10,12 @@ await page.route('**/api/ask',async route=>{
 });
 await page.goto(process.env.TEST_BASE_URL||'http://localhost:3105'); await page.waitForTimeout(600);
 await page.locator('#chat-message').fill('Cum depun o petiție?'); await page.getByRole('button',{name:'Trimite întrebarea'}).click();
-await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor(); await page.waitForTimeout(150);
+await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor({timeout:120000}); await page.waitForTimeout(150);
 await page.reload(); await page.waitForTimeout(600);
 await page.getByRole('button',{name:'Deschide meniul'}).click(); await page.getByRole('button',{name:/Cum depun o petiție/}).click();
-await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor(); await page.waitForTimeout(300);
+await page.getByText('Răspuns salvat pentru verificare.',{exact:true}).waitFor({timeout:120000}); await page.waitForTimeout(300);
 await page.locator('#chat-message').fill('Și apoi?'); await page.getByRole('button',{name:'Trimite întrebarea'}).click();
-await page.waitForTimeout(500);
+for(let i=0;i<240&&requests.length<2;i++) await page.waitForTimeout(500);
 assert.equal(requests[1].history[0].content,'Cum depun o petiție?'); assert.equal(requests[1].history[1].content,'Răspuns salvat pentru verificare.');
 const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pefir:conversations:v1:guest')));
 assert.equal(saved.length,1); assert.equal(saved[0].turns.length,2);

@@ -42,8 +42,8 @@ export const FACTS: Fact[] = [
       "contor optional", "метрологический документ", "обязательна поверка",
     ],
     text: {
-      ro: "Copia buletinului de verificare metrologică a contorului este marcată pe pagină ca opțională.",
-      ru: "Копия свидетельства о метрологической поверке счётчика отмечена на странице как необязательная.",
+      ro: "Copia buletinului de verificare metrologică a contorului este opțională.",
+      ru: "Копия свидетельства о метрологической поверке счётчика необязательна.",
     },
     cites: [{ passageId: "acc-contract-apart#p-docs", quote: "Copia xerox după buletinul de verificare metrologică de stat a contorului de apă (opțional)" }],
   },
@@ -56,13 +56,13 @@ export const FACTS: Fact[] = [
       "sigilare contor", "последний счёт", "опломбирование счётчика",
     ],
     text: {
-      ro: "Lista mai menționează ultima factură achitată (sau confirmarea gestionarului blocului despre datorii) și acordul proprietarului privind sigilarea contorului.",
-      ru: "В списке также указаны последний оплаченный счёт (или подтверждение управляющего домом о долгах) и согласие владельца на опломбирование счётчика.",
+      ro: "Vi se mai pot cere ultima factură achitată (sau confirmarea gestionarului blocului despre datorii) și acordul proprietarului privind sigilarea contorului.",
+      ru: "Также могут понадобиться последний оплаченный счёт (или подтверждение управляющего домом о долгах) и согласие владельца на опломбирование счётчика.",
     },
     cites: [{ passageId: "acc-contract-apart#p-factura", quote: "Ultima factură de plată pentru serviciul public de alimentare cu apă și de canalizare, achitată, sau confirmare de la gestionarul blocului locativ despre existența datoriilor" }],
     uncertainty: {
-      ro: "Pagina listează aceste acte în același bloc cu formulare și modele; nu precizează explicit dacă sunt obligatorii pentru fiecare caz.",
-      ru: "Страница перечисляет эти документы в одном блоке с формами и образцами; не уточняется, обязательны ли они в каждом случае.",
+      ro: "Aceste acte apar împreună cu formularele și modelele, așa că nu e clar dacă sunt obligatorii în orice situație — merită să întrebați la Apă-Canal.",
+      ru: "Эти документы идут вместе с формами и образцами, поэтому не ясно, обязательны ли они в любом случае, — лучше уточнить в Apă-Canal.",
     },
   },
   {
@@ -128,8 +128,8 @@ export const FACTS: Fact[] = [
     topic: "water-contract",
     aspects: ["validity"],
     text: {
-      ro: "Pagina indică drept bază Legea nr. 303/2013 și Regulamentul aprobat prin decizia CMC 14/11 din 11.08.2020.",
-      ru: "Страница ссылается на Закон № 303/2013 и Регламент, утверждённый решением МСК 14/11 от 11.08.2020.",
+      ro: "Baza legală este Legea nr. 303/2013 și Regulamentul aprobat prin decizia CMC 14/11 din 11.08.2020.",
+      ru: "Правовая основа — Закон № 303/2013 и Регламент, утверждённый решением МСК 14/11 от 11.08.2020.",
     },
     cites: [{ passageId: "acc-contraction#p-baza", quote: "Legea nr. 303/2013 privind serviciul public de alimentare cu apă şi de canalizare, Regulamentul de organizare şi funcționare a serviciului public de alimentare cu apă şi de canalizare din mun. Chișinău, aprobat prin decizia CMC 14/11 din 11.08.2020" }],
   },
@@ -187,8 +187,8 @@ export const FACTS: Fact[] = [
     ],
     core: true,
     text: {
-      ro: "Pentru consumatorii casnici, tariful pentru canalizare și epurare este 6,63 lei/m³. Pagina indică faptul că ultimele tarife aprobate sunt în vigoare din 06.08.2026.",
-      ru: "Для бытовых потребителей тариф на канализацию и очистку составляет 6,63 лея/м³. На странице указано, что последние утверждённые тарифы действуют с 06.08.2026.",
+      ro: "Pentru consumatorii casnici, tariful pentru canalizare și epurare este 6,63 lei/m³. Ultimele tarife aprobate sunt în vigoare din 06.08.2026.",
+      ru: "Для бытовых потребителей тариф на канализацию и очистку составляет 6,63 лея/м³. Последние утверждённые тарифы действуют с 06.08.2026.",
     },
     cites: [
       {
@@ -212,8 +212,8 @@ export const FACTS: Fact[] = [
     ],
     core: true,
     text: {
-      ro: "Pagina declară că aceste tarife sunt în vigoare din 06.08.2026.",
-      ru: "Страница заявляет, что тарифы действуют с 06.08.2026.",
+      ro: "Aceste tarife sunt în vigoare din 06.08.2026.",
+      ru: "Эти тарифы действуют с 06.08.2026.",
     },
     cites: [{ passageId: "acc-tarif#p-vigoare", quote: "în vigoare cu începere din 06.08.2026" }],
   },
@@ -246,8 +246,8 @@ export const FACTS: Fact[] = [
     },
     cites: [{ passageId: "acc-tarif#p-fara-tva", quote: "fără TVA, lei/m3" }],
     uncertainty: {
-      ro: "Pagina nu indică suma finală cu TVA pe care o vedeți în factură.",
-      ru: "На странице не указана итоговая сумма с НДС, которую вы видите в счёте.",
+      ro: "Nu știu sigur ce sumă finală, cu TVA, veți vedea în factură.",
+      ru: "Точно не знаю, какая итоговая сумма с НДС будет в вашем счёте.",
     },
   },
   {
@@ -341,8 +341,8 @@ export const FACTS: Fact[] = [
     ],
     core: true,
     text: {
-      ro: "Petiția trebuie semnată electronic prin MSIGN; altfel, conform paginii, nu va fi examinată.",
-      ru: "Петицию нужно подписать электронно через MSIGN; иначе, согласно странице, её не рассмотрят.",
+      ro: "Petiția trebuie semnată electronic prin MSIGN — altfel nu va fi examinată.",
+      ru: "Петицию нужно подписать электронно через MSIGN — иначе её не рассмотрят.",
     },
     cites: [
       { passageId: "pmc-petitions#p-msign", quote: "Petiția sau sesizarea nesemnată ELECTRONIC prin serviciul MSIGN nu va fi examinată" },
@@ -446,8 +446,8 @@ export const FACTS: Fact[] = [
     },
     cites: [{ passageId: "autosal-pf#p-tarif", quote: "la bloc – 17,50 lei; sector particular – 35,00 lei" }],
     uncertainty: {
-      ro: "Pagina nu indică de când se aplică tariful sau actul prin care a fost aprobat.",
-      ru: "На странице не указано, с какой даты действует тариф и каким актом он утверждён.",
+      ro: "Nu știu sigur de când se aplică tariful sau prin ce act a fost aprobat.",
+      ru: "Точно не знаю, с какой даты действует тариф и каким актом он утверждён.",
     },
   },
   {
@@ -521,8 +521,8 @@ export const FACTS: Fact[] = [
     ],
     core: true,
     text: {
-      ro: "La cerere se anexează acordul locatarilor; fără el, conform paginii, cererea nu va fi acceptată.",
-      ru: "К заявлению прилагается согласие жильцов; без него, согласно странице, заявление не примут.",
+      ro: "La cerere trebuie să anexați acordul locatarilor — fără el, cererea nu va fi acceptată.",
+      ru: "К заявлению нужно приложить согласие жильцов — без него заявление не примут.",
     },
     cites: [
       { passageId: "agsv-petitii#p-cine", quote: "în ambele cazuri se anexează acordul locatarilor, conform formularelor de mai jos. În caz contrar cererea nu va fi acceptată." },

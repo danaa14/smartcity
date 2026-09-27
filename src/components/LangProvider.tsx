@@ -19,6 +19,15 @@ function readCookie(): Lang | null {
   return m ? (m[1] as Lang) : null;
 }
 
+/**
+ * The layout is prerendered in Romanian and the cookie is adopted after hydration, so a value
+ * captured during the first render can still be "ro" for a Russian user. Anything sent to the
+ * server (the chat question) reads the selected language at the moment it is sent.
+ */
+export function selectedLang(fallback: Lang): Lang {
+  return stored ?? readCookie() ?? fallback;
+}
+
 export function LangProvider({ initial, children }: { initial: Lang; children: React.ReactNode }) {
   const subscribe = useCallback((fn: () => void) => {
     listeners.add(fn);

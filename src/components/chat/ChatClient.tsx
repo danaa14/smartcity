@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLang } from "../LangProvider";
+import { selectedLang, useLang } from "../LangProvider";
 import { Icon } from "./Icon";
 import { DocumentTurn, type DocContext } from "./DocumentTurn";
 import type { Answer } from "@/lib/answer/types";
@@ -11,6 +11,7 @@ import { EXAMPLES } from "@/lib/corpus/examples";
 import { useConversations } from "../ConversationProvider";
 import type { SavedTurn } from "@/lib/chat/types";
 import { VoiceCall } from "./VoiceCall";
+import { humanize } from "@/lib/answer/tone";
 import { detectRules, detectModel, mergeSpans, redactText } from "@/lib/scan/pii";
 
 type AskTurn = { kind: "ask"; id: number; question: string; answer?: Answer; failed?: string | true; phase?: string; text?: string };
@@ -43,6 +44,9 @@ const FAQ = [
   { q: { ro: "Trebuie să introduc date personale?", ru: "Нужно вводить личные данные?" }, a: { ro: "Nu cerem nume, telefon sau IDNP. Evitați datele personale în întrebări și fotografii. Documentele scanate sunt șterse după procesare; tichetele demo pot fi șterse din pagina lor. Într-o configurație cu AI extern, întrebarea și sursele sunt trimise furnizorului.", ru: "Мы не запрашиваем имя, телефон или IDNP. Не указывайте личные данные в вопросах и фото. Сканируемые документы удаляются после обработки; демо-заявки можно удалить на их странице. При подключённом внешнем ИИ вопрос и источники передаются провайдеру." } },
 ];
 
+/** Set after the first chat hydrates; later mounts (a new conversation, a history pick) start empty. */
+let hydrated = false;
+
 export function ChatClient(props: { initialQuestion?: string }) {
   const history = useConversations();
   return <ChatSession key={history.revision} {...props} />;
@@ -51,6 +55,17 @@ export function ChatClient(props: { initialQuestion?: string }) {
 function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
   const { lang, t } = useLang();
   const [draft, setDraft] = useState("");
+  // Text typed before the page finished loading lives only in the DOM, and hydration resets
+  // the controlled field to "". Read it during the first render (before that reset), render
+  // exactly what the server did, then restore it once hydrated. Only the page load: a later
+  // mount would pick up the previous conversation's unsent text from the outgoing field.
+  const [earlyDraft] = useState(() => (hydrated || typeof document === "undefined" ? "" : document.querySelector<HTMLTextAreaElement>("#chat-message")?.value ?? ""));
+  useEffect(() => {
+    hydrated = true;
+    if (!earlyDraft) return;
+    const frame = requestAnimationFrame(() => setDraft((current) => current || earlyDraft));
+    return () => cancelAnimationFrame(frame);
+  }, [earlyDraft]);
   const history = useConversations();
   const { save } = history;
   const [turns, setTurns] = useState<Turn[]>(() => history.active?.turns ?? []);
@@ -80,6 +95,10 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     pending.current = true;
     setBusy(true);
     setPrivacyError(false);
+    // Created before the privacy check, which can take seconds while the local model loads:
+    // leaving the chat meanwhile must cancel the question instead of sending it afterwards.
+    const abort = new AbortController();
+    controller.current = abort;
     let text = original;
     try {
       text = await privateText(original);
@@ -89,13 +108,12 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
       setBusy(false);
       return;
     }
+    if (abort.signal.aborted) { pending.current = false; return; }
     setValidation(false);
     setDraft("");
     const id = retryId ?? ++sequence.current;
     const fresh: AskTurn = { kind: "ask", id, question: text };
     setTurns((prev) => retryId === undefined ? [...prev, fresh] : prev.map((turn) => turn.id === id ? fresh : turn));
-    const abort = new AbortController();
-    controller.current = abort;
     const timeout = setTimeout(() => abort.abort(), 100000);
     const patch = (fields: Partial<AskTurn>) => setTurns((prev) => prev.map((turn) => (turn.id === id && turn.kind === "ask" ? { ...turn, ...fields } : turn)));
     try {
@@ -103,7 +121,7 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
       const response = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ question: text, lang, history: safeHistory, document: docRef.current ? { name: docRef.current.name, text: docRef.current.text } : undefined }),
+        body: JSON.stringify({ question: text, lang: selectedLang(lang), history: safeHistory, document: docRef.current ? { name: docRef.current.name, text: docRef.current.text } : undefined }),
         signal: abort.signal,
       });
       if (!response.ok || !response.body) throw new Error("request_failed");
@@ -130,7 +148,8 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
           if (event.type === "phase") patch({ phase: event.label });
           else if (event.type === "chunk") {
             streamed += event.text;
-            patch({ text: streamed, phase: undefined });
+            // Same wording clean-up as the final answer, so a robotic opener never flashes by.
+            patch({ text: humanize(streamed), phase: undefined });
           } else if (event.type === "answer") {
             settled = true;
             patch({ answer: event.answer, phase: undefined, text: undefined });
@@ -175,7 +194,13 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
     }
   }, [initialQuestion, ask, history.active]);
 
-  useEffect(() => () => controller.current?.abort(), []);
+  // Abort only on a real unmount. React's development remount runs cleanup and setup back to
+  // back; deferring the abort lets the setup cancel it, so the first question is not lost.
+  const unmountAbort = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    clearTimeout(unmountAbort.current);
+    return () => { unmountAbort.current = setTimeout(() => controller.current?.abort(), 0); };
+  }, []);
 
   useEffect(() => {
     if (busy || !turns.length) return;
@@ -204,7 +229,8 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
       if (!turn.answer) return [];
       return [
         { role: "user" as const, content: turn.question },
-        { role: "assistant" as const, content: turn.answer.prose ?? turn.answer.summary[lang] },
+        // What the person actually read, so the model continues its own conversational voice.
+        { role: "assistant" as const, content: turn.answer.prose ?? (turn.answer.claims.map((c) => c.text[lang]).join(" ") || turn.answer.summary[lang]) },
       ];
     });
     docRef.current = turns.flatMap((turn) => (turn.kind === "doc" && turn.ctx ? [turn.ctx] : [])).at(-1) ?? null;
@@ -246,10 +272,10 @@ function ChatSession({ initialQuestion = "" }: { initialQuestion?: string }) {
                 <div className="user-message">{turn.question}</div>
                 <div className="assistant-label"><span className="assistant-dot" />pe fir</div>
                 {turn.answer ? <div className="chat-answer"><AnswerView answer={turn.answer} headingRef={heading} onFollowUp={(q) => { if (!pending.current) void ask(q); }} compact /></div> : turn.failed ? (
-                  <div className="chat-error" role="alert"><p>{typeof turn.failed === "string" ? turn.failed : t({ ro: "Nu am reușit să obținem răspunsul. Întrebarea ta este păstrată aici.", ru: "Не удалось получить ответ. Ваш вопрос сохранён здесь." })}</p><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void ask(turn.question, turn.id)}>{t({ ro: "Încearcă din nou", ru: "Повторить" })}</button></div>
+                  <div className="chat-error" role="alert"><p>{typeof turn.failed === "string" ? turn.failed : t({ ro: "Îmi pare rău, n-am reușit să răspund de data asta. Întrebarea ta a rămas aici — mai încearcă o dată.", ru: "Простите, не получилось ответить. Ваш вопрос сохранён — попробуйте ещё раз." })}</p><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void ask(turn.question, turn.id)}>{t({ ro: "Încearcă din nou", ru: "Повторить" })}</button></div>
                 ) : turn.text ? (
                   <div className="chat-answer"><p className="prose-stream">{turn.text}<span className="stream-caret" aria-hidden="true" /></p></div>
-                ) : <p className="searching"><span className="loading-dots" aria-hidden="true">•••</span>{turn.phase ?? t({ ro: "Caut în sursele disponibile…", ru: "Ищу в доступных источниках…" })}</p>}
+                ) : <p className="searching"><span className="loading-dots" aria-hidden="true">•••</span>{turn.phase ?? t({ ro: "Un moment, caut informația…", ru: "Секунду, ищу информацию…" })}</p>}
               </section>
             ))}
           </div>

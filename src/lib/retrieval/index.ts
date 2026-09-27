@@ -53,6 +53,25 @@ const ASPECT_CUES: Record<Aspect, string[]> = {
   validity: ["in vigoare", "valabil", "actual", "nou", "действ", "актуал", "новый"],
 };
 
+/**
+ * Russian inflects every noun ("договор" → "договора", "квартира" → "квартире"), so a Cyrillic
+ * topic keyword matches by its stem. Only topic ranking uses this: aspect cues are short words
+ * and phrases ("за сколько", "почт") that stemming would fire on unrelated questions.
+ * Romanian keywords already list their inflected forms and keep exact matching.
+ */
+const CYRILLIC = /[\u0400-\u04FF]/;
+function ruStem(word: string): string {
+  if (word.length >= 8) return word.slice(0, -3);
+  if (word.length >= 6) return word.slice(0, -2);
+  if (word.length >= 4) return word.slice(0, -1);
+  return word;
+}
+/** Every content word of a Cyrillic phrase (prepositions ignored) must appear, in any form. */
+function ruPhraseMatches(phrase: string, qTokens: string[]): boolean {
+  const words = phrase.split(" ").filter((w) => w.length >= 3);
+  return words.length > 0 && words.every((w) => qTokens.some((t) => t.startsWith(ruStem(w))));
+}
+
 function matches(qNorm: string, qTokens: string[], kw: string): boolean {
   const k = normalize(kw);
   if (!k) return false;
@@ -91,7 +110,9 @@ export function rankTopics(question: string, aspects: Aspect[]): TopicHit[] {
       // A question token INSIDE a longer keyword ("primar" in "primărie") is a
       // weak, often coincidental signal — demote it so a lone coincidence
       // never reads as a confident topic match.
-      if (kn.includes(" ")) {
+      if (CYRILLIC.test(kn)) {
+        if (kn.includes(" ") ? ruPhraseMatches(kn, qt) : qt.some((t) => t.startsWith(ruStem(kn)))) w = 1;
+      } else if (kn.includes(" ")) {
         if (qn.includes(kn)) w = 1;
       } else if (qt.some((t) => t.startsWith(kn))) w = 1;
       else if (qt.some((t) => kn.length >= 5 && kn.startsWith(t) && t.length >= 4)) w = 0.4;
@@ -308,6 +329,13 @@ export function retrieve(question: string, aspects = detectAspects(question)): R
   const needHits = informationNeeds.map((need) =>
     searchPassages(need, 8, officialIds).filter(({ coverage, score }) => score > 0 && coverage >= 0.16),
   );
+  // Most official passages exist only in Romanian, so a Russian question can name the subject
+  // confidently yet share no words with them. The confidently detected topic's own cited
+  // passages are then the candidates; the drafter still has to quote them verbatim.
+  if (informationNeeds.length === 1 && !needHits[0].length && top && top.specific >= SPECIFIC_CONFIDENT) {
+    const ids = new Set(FACTS.filter((f) => f.topic === top.topic.id).flatMap((f) => f.cites.map((c) => c.passageId)));
+    needHits[0] = PASSAGES.filter((p) => ids.has(p.id) && officialIds.includes(p.docId)).slice(0, 8).map((passage) => ({ passage, score: 0, coverage: 0 }));
+  }
   const missingNeeds = informationNeeds.filter((_, i) => needHits[i].length === 0);
   const byPassage = new Map<string, PassageHit>();
   needHits.forEach((hits) => hits.slice(0, informationNeeds.length > 1 ? 3 : 8).forEach((hit) => {

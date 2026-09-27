@@ -14,7 +14,6 @@ import type { Lang } from "@/lib/corpus/types";
 import type { Answer } from "@/lib/answer/types";
 import { contextualQuestion, refersToDocument, sanitizeHistory } from "@/lib/chat/context";
 import { detectRules } from "@/lib/scan/pii";
-import { detectLang } from "@/lib/text";
 
 export const runtime = "nodejs";
 
@@ -70,14 +69,14 @@ function historyOf(turns: Turn[]): string {
 }
 
 const PHASES: Record<Lang, { search: string; verify: string; think: string; document: string }> = {
-  ro: { search: "Caut în sursele indexate…", verify: "Verific citările…", think: "Formulez răspunsul…", document: "Recitesc documentul tău…" },
-  ru: { search: "Ищу в индексированных источниках…", verify: "Проверяю цитаты…", think: "Формулирую ответ…", document: "Перечитываю ваш документ…" },
+  ro: { search: "Un moment, caut informația…", verify: "Verific detaliile…", think: "Vă scriu imediat…", document: "Mă uit în documentul dumneavoastră…" },
+  ru: { search: "Секунду, ищу информацию…", verify: "Проверяю детали…", think: "Сейчас отвечу…", document: "Смотрю ваш документ…" },
 };
 
 function offline(lang: Lang): string {
   return lang === "ru"
-    ? "Модель сейчас не отвечает. Попробуйте ещё раз через несколько секунд."
-    : "Modelul nu răspunde chiar acum. Încercați din nou peste câteva secunde.";
+    ? "Простите, не получается ответить прямо сейчас. Попробуйте ещё раз через несколько секунд."
+    : "Îmi pare rău, nu reușesc să vă răspund chiar acum. Încercați din nou peste câteva secunde.";
 }
 
 export async function POST(req: Request) {
@@ -90,9 +89,9 @@ export async function POST(req: Request) {
   if (!question) return NextResponse.json({ error: "empty_question" }, { status: 400 });
   if (question.length > MAX_QUESTION) return NextResponse.json({ error: "too_long" }, { status: 400 });
 
-  const uiLang: Lang = body?.lang === "ru" ? "ru" : "ro";
-  const hasCyrillic = /[\u0400-\u04FF]/.test(question);
-  const lang: Lang = hasCyrillic ? detectLang(question) : uiLang;
+  // The reply follows the language selected on the platform (Romanian by default), not the
+  // script the question happens to be typed in. Retrieval itself is language-agnostic.
+  const lang: Lang = body?.lang === "ru" ? "ru" : "ro";
   const turns = sanitizeHistory(body?.history);
   if (detectRules(question).length || turns.some((turn) => detectRules(turn.content).length)) {
     return NextResponse.json({ error: "pii_leak" }, { status: 422 });
