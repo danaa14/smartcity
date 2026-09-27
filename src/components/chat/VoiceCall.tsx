@@ -39,6 +39,9 @@ const COPY = {
   },
 } as const;
 
+// Distinctive part of the transcription prompt sent in /api/voice/token (both languages).
+const TRANSCRIPTION_HINT_ECHO = /AGSV,\s*Ap[ăa]-Canal,\s*EXDRUPO/i;
+
 function localizedError(lang: Lang, code: string): string {
   const copy = COPY[lang];
   if (code === "voice_not_configured" || code === "voice_unavailable") return copy.unavailable;
@@ -142,6 +145,9 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
     selectedLang.current = lang;
     release();
     setStatus("idle");
+    setLines([]);
+    setSourceGroups([]);
+    setError("");
     setRecognizedQuestion("");
     recognizedRef.current = "";
   }, [lang, release]);
@@ -197,7 +203,12 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       setMicrophoneEnabled(false);
       setStatus("thinking");
     } else if (type === "conversation.item.input_audio_transcription.completed") {
-      const transcript = typeof event.transcript === "string" ? event.transcript.trim() : "";
+      // Audio captured while the assistant was talking (room noise, the greeting picked up by the
+      // microphone) is transcribed late; answering it would collide with the active response.
+      if (responseActive.current || playbackActive.current || searchBusy.current) return;
+      const raw = typeof event.transcript === "string" ? event.transcript.trim() : "";
+      // On silence or noise the transcriber can return its own hint text instead of speech.
+      const transcript = TRANSCRIPTION_HINT_ECHO.test(raw) ? "" : raw;
       if (transcript) {
         setError("");
         recognizedRef.current = transcript;
@@ -255,7 +266,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       }
     } else if (type === "error") {
       const detail = event.error as { code?: string } | undefined;
-      if (detail?.code === "response_cancel_not_active") return;
+      if (detail?.code === "response_cancel_not_active" || detail?.code === "conversation_already_has_active_response") return;
       release();
       setStatus("error");
       setError(COPY[selectedLang.current].unavailable);
@@ -294,6 +305,7 @@ export function VoiceCall({ lang, open }: { lang: Lang; open: boolean }) {
       const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (generation !== sessionGeneration.current) { mic.getTracks().forEach((track) => track.stop()); return; }
       microphone.current = mic;
+      setMicrophoneEnabled(false);
       startupTimer.current = setTimeout(() => {
         if (generation !== sessionGeneration.current) return;
         release();
