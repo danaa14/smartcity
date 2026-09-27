@@ -3,12 +3,47 @@ import { PASSAGE_BY_ID } from "../corpus/passages";
 import { DOC_BY_ID } from "../corpus/docs";
 import type { Aspect, Fact, L10n, Lang, Passage, SourceDoc } from "../corpus/types";
 import { detectAspects, keywordFactMatch, outOfCorpusHint, rankTopics } from "../retrieval";
-import { detectLang } from "../text";
+import { detectLang, normalize } from "../text";
 import { validateClaims } from "./validate";
 import { detectConflicts } from "./conflicts";
 import type { Answer, AnswerStatus, Claim } from "./types";
 
 const MIN_TOPIC_SCORE = 1;
+
+type ServiceFamily = "water" | "waste" | "mixed";
+
+/** Dacă întrebarea numește un serviciu, limitează căutarea la tema lui. */
+function explicitServiceFamily(question: string): ServiceFamily | null {
+  const q = normalize(question);
+
+  const asksAboutWaste =
+    q.includes("autosalubritate") || q.includes("автосалубритате");
+  const asksAboutWater =
+    q.includes("apa canal") ||
+    q.includes("apacanal") ||
+    q.includes("апа канал") ||
+    q.includes("апаканал");
+
+  if (asksAboutWaste && asksAboutWater) return "mixed";
+  if (asksAboutWaste) return "waste";
+  if (asksAboutWater) return "water";
+  return null;
+}
+
+/** Transportul nu este acoperit de topicurile curate din acest pipeline. */
+function asksAboutBusRoute(question: string): boolean {
+  const q = normalize(question);
+
+  const hasRomanianTransportTerm = q
+    .split(/\s+/u)
+    .some((word) =>
+      ["rut", "autobuz", "traseu", "bus", "route"].some((stem) =>
+        word.startsWith(stem),
+      ),
+    );
+
+  return hasRomanianTransportTerm || /автобус|маршрут/u.test(q);
+}
 
 const ASPECT_LABEL: Record<Aspect, L10n> = {
   procedure: { ro: "procedura", ru: "порядок" },
@@ -41,8 +76,24 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
   const q = question.trim().slice(0, 500);
   const questionLang = uiLang ?? detectLang(q);
   const aspects = detectAspects(q);
-  const ranked = rankTopics(q, aspects).filter((hit) => options.includeDemo !== false || hit.topic.kind !== "demo");
-  const top = ranked[0] && ranked[0].score >= MIN_TOPIC_SCORE ? ranked[0] : null;
+  const rankedAll = rankTopics(q, aspects).filter(
+    (hit) => options.includeDemo !== false || hit.topic.kind !== "demo",
+  );
+  const serviceFamily = explicitServiceFamily(q);
+
+  const ranked = serviceFamily
+    ? rankedAll.filter((hit) =>
+        serviceFamily === "mixed"
+          ? false
+          : serviceFamily === "waste"
+            ? hit.topic.id === "waste"
+            : hit.topic.id === "water-contract" ||
+              hit.topic.id === "water-tariff",
+      )
+    : rankedAll;
+
+  const top =
+    ranked[0] && ranked[0].score >= MIN_TOPIC_SCORE ? ranked[0] : null;
 
   const base = {
     question: q,
@@ -60,7 +111,9 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
     },
   };
 
-  if (options.forceMissing) return missingAnswer(q, base);
+  if (options.forceMissing || asksAboutBusRoute(q)) {
+    return missingAnswer(q, base);
+  }
   if (!top) return missingAnswer(q, base);
 
   const topic = top.topic;
@@ -88,8 +141,22 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
   if (aspects.includes("contact")) direct = [...direct, ...topicFacts.filter((f) => topic.contactFactIds.includes(f.id))];
   direct = dedupe(direct).slice(0, 7);
 
-  const stepFactIds = topic.steps.flatMap((s) => s.factIds);
-  const allIds = dedupe([...direct.map((f) => f.id), ...stepFactIds, ...topic.contactFactIds, ...(topic.servicePage ? [topic.servicePage.factId] : [])]);
+  const includeSteps = aspects.includes("procedure");
+  const includeContacts = aspects.includes("contact");
+
+  const stepFactIds = includeSteps
+    ? topic.steps.flatMap((step) => step.factIds)
+    : [];
+  const contactFactIds = includeContacts ? topic.contactFactIds : [];
+  const serviceFactIds =
+    includeSteps && topic.servicePage ? [topic.servicePage.factId] : [];
+
+  const allIds = dedupe([
+    ...direct.map((fact) => fact.id),
+    ...stepFactIds,
+    ...contactFactIds,
+    ...serviceFactIds,
+  ]);
   const drafted = allIds.map((id) => FACT_BY_ID.get(id)).filter(Boolean).map((f) => factToClaim(f!));
 
   // Validate every claim before it can be shown.
@@ -99,16 +166,26 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
 
   // Number citations by first appearance, across direct claims, then steps, then contacts.
   const order: string[] = [];
-  const claimOrder = [...direct.map((f) => f.id), ...stepFactIds, ...topic.contactFactIds].filter((id) => validIds.has(id));
+  
+  // În claimOrder:
+  const claimOrder = [
+    ...direct.map((fact) => fact.id),
+    ...stepFactIds,
+    ...contactFactIds,
+  ].filter((id) => validIds.has(id));
   for (const id of claimOrder) for (const c of byId[id].citations) if (!order.includes(c.passageId)) order.push(c.passageId);
   for (const c of valid) for (const cit of c.citations) cit.n = order.indexOf(cit.passageId) + 1;
 
   const claims = direct.filter((f) => validIds.has(f.id)).map((f) => byId[f.id]);
-  const steps = topic.steps
+  // În construirea steps:
+  const steps = (includeSteps ? topic.steps : [])
     .map((s) => ({ text: s.text, claimIds: s.factIds.filter((id) => validIds.has(id)) }))
     .filter((s) => s.claimIds.length > 0);
-  const contacts = topic.contactFactIds.filter((id) => validIds.has(id) && !claims.some((c) => c.id === id)).map((id) => byId[id]);
-
+  // În construirea contacts:
+  const contacts = contactFactIds
+    .filter((id) => validIds.has(id) && !claims.some((claim) => claim.id === id))
+    .map((id) => byId[id]);
+    
   const conflicts = detectConflicts(valid);
 
   // Missing coverage: aspects the user asked about with no supporting claim, plus dropped claims.
@@ -143,9 +220,16 @@ export function answerQuestion(question: string, uiLang?: Lang, options: { inclu
     docs[p.docId] = DOC_BY_ID.get(p.docId)!;
   }
 
-  const sp = topic.servicePage && validIds.has(topic.servicePage.factId)
-    ? { url: topic.servicePage.url, label: topic.servicePage.label, claimId: topic.servicePage.factId }
-    : undefined;
+  const sp =
+    topic.servicePage &&
+    serviceFactIds.includes(topic.servicePage.factId) &&
+    validIds.has(topic.servicePage.factId)
+      ? {
+          url: topic.servicePage.url,
+          label: topic.servicePage.label,
+          claimId: topic.servicePage.factId,
+        }
+      : undefined;
 
   return {
     ...base,
