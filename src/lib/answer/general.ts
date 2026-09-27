@@ -116,7 +116,15 @@ function sessionOf(question: string): string {
 
 /** Wraps generated prose in the Answer envelope the UI already understands. */
 export function proseAnswer(question: string, lang: Lang, text: string, web?: WebResult[]): Answer {
-  const prose = stripMarkdown(text);
+  const draft = stripMarkdown(text);
+  // An uncited numbered procedure is easy to mistake for verified instructions.
+  // Concrete routes use the cited action-guide path; otherwise show the gap plainly.
+  const unlinkedProcedure = /(?:^|\n)\s*1[.)]\s/u.test(draft) && /(?:^|\n)\s*2[.)]\s/u.test(draft);
+  const prose = unlinkedProcedure
+    ? lang === "ru"
+      ? "Порядок действий по этой процедуре не подтвержден по индексированным официальным источникам. Проверьте шаги и нужные документы на странице ответственного учреждения ниже."
+      : "Pașii acestei proceduri nu sunt confirmați din surse oficiale indexate. Verifică ordinea și actele necesare pe pagina instituției responsabile de mai jos."
+    : draft;
   return {
     question,
     questionLang: lang,

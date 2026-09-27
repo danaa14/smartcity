@@ -27,6 +27,8 @@ export interface Conflict {
 export interface NextStep {
   text: L10n;
   claimIds: string[];
+  /** Direct official place to perform this step, when independently verified. */
+  action?: { url: string; label: L10n };
 }
 
 export interface ValidationReport {

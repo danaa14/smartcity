@@ -1,10 +1,18 @@
 import "server-only";
 import type { Answer } from "../answer/types";
+import { normalize } from "../text";
 
 export interface WebResult {
   title: string;
   url: string;
   snippet: string;
+}
+
+/** A stable institutional entry point when no indexed passage answers a civic question. */
+export function officialFallbackLinks(question: string): WebResult[] {
+  const q = normalize(question);
+  if (!/(?:primar|pretur|chisinau|ciocana|botanica|rascani|buiucani|centru|municip|sector|примэр|претур|кишинев)/u.test(q)) return [];
+  return [{ title: "Primăria municipiului Chișinău", url: "https://chisinau.md/", snippet: "Pagina oficială a Primăriei municipiului Chișinău." }];
 }
 
 /**
@@ -35,9 +43,8 @@ function trusted(url: string): boolean {
  */
 export async function withWebFallback(answer: Answer, question: string): Promise<Answer> {
   if (answer.status !== "missing" || answer.web) return answer;
-  const web = await webSearch(question);
+  const web = officialFallbackLinks(question);
   if (!web.length) return answer;
-  console.log(`[web] attached ${web.length} results to missing answer`);
   return { ...answer, web };
 }
 

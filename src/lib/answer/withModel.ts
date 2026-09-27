@@ -16,7 +16,36 @@ import type { LlmDraft } from "./llm";
 /** Repeated questions resolve instantly: corpus answers only depend on the question, lang and corpus. */
 const CACHE = new Map<string, { answer: Answer; expires: number }>();
 const CACHE_MAX = 200;
-type NeedDraft = { need: string; draft: LlmDraft; valid: Claim[]; report: ValidationReport };
+const SOURCE_AGENT_TIMEOUT_MS = 15000;
+type NeedDraft = { need: string; draft: LlmDraft; valid: Claim[]; report: ValidationReport; failed: boolean };
+
+/** Two source groups can be researched at once without treating either model output as evidence. */
+async function draftNeed(need: string, candidates: string[], parallel: boolean, signal?: AbortSignal): Promise<NeedDraft> {
+  if (!candidates.length) return { need, draft: { claims: [], missing: [] }, valid: [], report: { checked: 0, passed: 0, dropped: [] }, failed: false };
+  const groups = parallel && candidates.length >= 4
+    ? [candidates.slice(0, Math.ceil(candidates.length / 2)), candidates.slice(Math.ceil(candidates.length / 2))]
+    : [candidates];
+  const results = await Promise.allSettled(groups.map((ids, index) => draftWithModel(need, ids, signal, index)));
+  const valid: Claim[] = [];
+  const report: ValidationReport = { checked: 0, passed: 0, dropped: [] };
+  const missing: LlmDraft["missing"] = [];
+  const seen = new Set<string>();
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    const checked = validateClaims(result.value.claims);
+    report.checked += checked.report.checked;
+    report.passed += checked.report.passed;
+    report.dropped.push(...checked.report.dropped);
+    for (const claim of checked.valid) {
+      const key = `${normalize(claim.text.ro)}\0${claim.citations.map((c) => c.passageId).join(",")}`;
+      if (!seen.has(key)) { seen.add(key); valid.push(claim); }
+    }
+    // A source group may lack an answer that another group found. Its missing list is
+    // useful only when that group saw the complete candidate set.
+    if (groups.length === 1) missing.push(...result.value.missing);
+  }
+  return { need, draft: { claims: [], missing }, valid, report, failed: results.some((result) => result.status === "rejected") };
+}
 
 /**
  * Model-assisted corpus answer, or `null` when the corpus cannot reach the question and the
@@ -31,7 +60,7 @@ export function answerWithModel(question: string, lang: Lang, signal?: AbortSign
   const hit = CACHE.get(key);
   if (hit && hit.expires > Date.now()) return Promise.resolve(structuredClone({ ...hit.answer, question }));
   return buildAnswer(question, lang, signal).then((answer) => {
-    if (answer && !signal?.aborted && answer.engine.mode !== "llm-fallback") {
+    if (answer && !signal?.aborted && answer.status === "supported" && answer.engine.mode !== "llm-fallback") {
       if (CACHE.size >= CACHE_MAX) CACHE.delete(CACHE.keys().next().value as string);
       CACHE.set(key, { answer: structuredClone(answer), expires: Date.now() + 60_000 });
     }
@@ -49,7 +78,9 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
   // Serving pre-written facts is only safe when retrieval is sure of the subject; otherwise
   // the user gets a confident answer to a question they did not ask.
   const curated = found.informationNeeds.length === 1 && found.confident && base.claims.length > 0;
-  if (!AI.enabled) return curated ? base : null;
+  // Curated claims already have exact citations and need no model round trip.
+  if (curated) return base;
+  if (!AI.enabled) return null;
 
   // A passage-only match has no curated topic, so the pipeline's "not covered by the
   // indexed sources" gap no longer applies — the passages below ARE indexed sources.
@@ -73,6 +104,9 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
       };
 
   try {
+    const draftSignal = signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(SOURCE_AGENT_TIMEOUT_MS)])
+      : AbortSignal.timeout(SOURCE_AGENT_TIMEOUT_MS);
     // Draft each explicit information need against only its own retrieved passages. This
     // prevents a strong match for one clause from becoming evidence for another clause.
     const drafts: NeedDraft[] = await Promise.all(found.informationNeeds.map(async (need, index) => {
@@ -80,10 +114,7 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
         ? FACTS.filter((f) => f.topic === base.topicId).flatMap((f) => f.cites.map((c) => c.passageId))
         : [];
       const candidates = [...new Set([...topicPassages, ...found.needPassages[index].map((h) => h.passage.id)])];
-      if (!candidates.length) return { need, draft: { claims: [], missing: [] }, valid: [], report: { checked: 0, passed: 0, dropped: [] } as ValidationReport };
-      const draft = await draftWithModel(need, candidates, signal);
-      const checked = validateClaims(draft.claims);
-      return { need, draft, valid: checked.valid, report: checked.report };
+      return draftNeed(need, candidates, found.informationNeeds.length === 1, draftSignal);
     }));
     const valid = drafts.flatMap(({ valid }, index) => valid.map((claim, claimIndex) => ({
       ...claim,
@@ -118,6 +149,7 @@ async function buildAnswer(question: string, lang: Lang, signal?: AbortSignal): 
     const missingNeeds = [
       ...found.missingNeeds,
       ...drafts.filter((item) => found.needPassages[found.informationNeeds.indexOf(item.need)].length > 0 && item.valid.length === 0).map((item) => item.need),
+      ...drafts.filter((item) => item.failed && item.valid.length > 0).map((item) => item.need),
     ];
     const missing = [
       ...start.missing,
