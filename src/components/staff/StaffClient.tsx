@@ -302,29 +302,28 @@ export function StaffClient({ items: initial, tickets, conflicts, unknownValidit
           <section className="bo-panel">
             <div className="bo-panel-head">
               <div>
-                <h2>{t({ ro: "Tichete demo", ru: "Демо-заявки" })}</h2>
-                <p>{t({ ro: "Sesizări create în acest prototip. Nu au fost trimise nicăieri.", ru: "Обращения, созданные в этом прототипе. Никуда не отправлены." })}</p>
+                <h2>{t({ ro: "Sesizări primite", ru: "Полученные обращения" })}</h2>
+                <p>{t({ ro: "Sesizări păstrate pe serverul aplicației. Instituțiile municipale nu sunt conectate.", ru: "Обращения сохранены на сервере приложения. Муниципальные учреждения не подключены." })}</p>
               </div>
             </div>
             {tickets.length === 0 ? (
-              <Empty text={{ ro: "Niciun tichet demo.", ru: "Демо-заявок нет." }} />
+              <Empty text={{ ro: "Nicio sesizare primită încă.", ru: "Пока нет обращений." }} />
             ) : (
               <div className="bo-rows">
                 {tickets.map((k) => (
                   <article key={k.id} className="bo-row">
                     <div className="bo-row-top">
-                      <span className="bo-pill demo">DEMO</span>
-                      <span className={`bo-pill ${(k.status ?? "active") === "done" ? "resolved" : "new"}`}>
-                        {(k.status ?? "active") === "done" ? t({ ro: "Rezolvat", ru: "Решено" }) : t({ ro: "Activ", ru: "Активно" })}
-                      </span>
                       <span>{k.channel === "phone-demo" ? "☏ " : ""}{fmtDateTime(k.createdAt, lang)}</span>
-                      <span style={{ marginLeft: "auto" }}>{t({ ro: "netrimis", ru: "не отправлено" })}</span>
+                      <span className={`bo-pill ${(k.status ?? "active") === "done" ? "resolved" : "new"}`} style={{ marginLeft: "auto" }}>{(k.status ?? "active") === "done" ? t({ ro: "Rezolvată", ru: "Решено" }) : t({ ro: "Nouă", ru: "Новая" })}</span>
                     </div>
                     <p className="bo-row-body">
                       <Link href={`/tichet/${k.id}`} style={{ fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2 }}>
                         {k.title || CATEGORIES.find((c) => c.id === k.category)?.label[lang]}
                       </Link>
                     </p>
+                    <p className="bo-row-meta">{k.description}</p>
+                    <p className="bo-row-meta">{CATEGORIES.find((c) => c.id === k.category)?.label[lang]} · {k.media.length} {t({ ro: "atașamente", ru: "вложений" })}</p>
+                    {k.media.length > 0 && <p className="bo-row-meta">{k.media.map((m) => <Link key={m.file} href={`/tichet/${k.id}`} style={{ textDecoration: "underline", marginRight: 10 }}>{m.kind === "photo" ? t({ ro: "Vezi fotografia", ru: "Фото" }) : m.kind === "video" ? t({ ro: "Vezi video", ru: "Видео" }) : t({ ro: "Vezi audio", ru: "Аудио" })}</Link>)}</p>}
                     <p className="bo-row-meta">{k.city || "Chișinău"} · {k.location.text || t({ ro: "fără locație", ru: "без места" })} · <span style={{ fontFamily: "ui-monospace, monospace" }}>{k.id}</span></p>
                     <TicketStatusControl ticket={k} />
                   </article>
@@ -367,7 +366,7 @@ function Overview({ stats, conflicts, tickets, unknownValidity, metrics, onGo }:
           <Jump onGo={onGo} to="coverage" n={coverage.unmatched} title={{ ro: "Întrebări în afara corpusului", ru: "Вопросы вне корпуса" }} body={{ ro: `${corpus.passages} pasaje indexate susțin doar ${corpus.facts} afirmații, pe ${corpus.topics} subiecte. Restul întrebărilor nu au unde ateriza.`, ru: `${corpus.passages} проиндексированных фрагментов подкрепляют лишь ${corpus.facts} утверждений по ${corpus.topics} темам. Остальным вопросам некуда приземлиться.` }} />
           <Jump onGo={onGo} to="gaps" n={stats.openGaps} title={{ ro: "Lacune de completat", ru: "Пробелы для заполнения" }} body={{ ro: "Întrebări reale la care corpusul nu are nimic de citat.", ru: "Реальные вопросы, на которые в корпусе нечего процитировать." }} />
           <Jump onGo={onGo} to="conflicts" n={conflicts} title={{ ro: "Contradicții de arbitrat", ru: "Противоречия для разрешения" }} body={{ ro: "Două documente, două valori. Trebuie decis care este în vigoare.", ru: "Два документа, два значения. Нужно решить, какой действует." }} />
-          <Jump onGo={onGo} to="tickets" n={openTickets} title={{ ro: "Tichete deschise", ru: "Открытые заявки" }} body={{ ro: "Sesizări demo care nu au fost încă marcate rezolvate.", ru: "Демо-обращения, ещё не отмеченные решёнными." }} />
+          <Jump onGo={onGo} to="tickets" n={openTickets} title={{ ro: "Sesizări noi", ru: "Новые обращения" }} body={{ ro: "Sesizări care așteaptă să fie consultate de personal.", ru: "Обращения, ожидающие просмотра сотрудниками." }} />
         </div>
       </section>
 

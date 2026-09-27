@@ -1,19 +1,23 @@
-import { NextResponse } from "next/server";
 import { deleteTicket, tickets } from "@/lib/tickets/repo";
+import { staffSession } from "@/lib/staff/auth";
+import { NextResponse } from "next/server";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  if (await staffSession() !== "ok") return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const { id } = await ctx.params;
   const t = await tickets.get(id);
   return t ? NextResponse.json(t, { headers: { "Cache-Control": "no-store" } }) : NextResponse.json({ error: "not_found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  if (await staffSession() !== "ok") return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const { id } = await ctx.params;
   const ok = await deleteTicket(id);
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "not_found" }, { status: 404 });
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  if (await staffSession() !== "ok") return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null) as { status?: unknown } | null;
   if (body?.status !== "active" && body?.status !== "done") return NextResponse.json({ error: "invalid_status" }, { status: 400 });

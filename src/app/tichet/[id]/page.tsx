@@ -4,11 +4,14 @@ import Link from "next/link";
 import { getLang } from "@/lib/i18n/server";
 import { tr } from "@/lib/i18n";
 import { tickets } from "@/lib/tickets/repo";
+import { staffSession } from "@/lib/staff/auth";
+import { StaffGate } from "@/components/staff/StaffGate";
 
-export const metadata: Metadata = { title: "Tichet demo" };
+export const metadata: Metadata = { title: "Detalii sesizare" };
 export const dynamic = "force-dynamic";
 
 export default async function TicketPage(props: PageProps<"/tichet/[id]">) {
+  if (await staffSession() !== "ok") return <StaffGate configured={!!process.env.STAFF_PASSWORD} />;
   const { id } = await props.params;
   const sp = await props.searchParams;
   const lang = await getLang();

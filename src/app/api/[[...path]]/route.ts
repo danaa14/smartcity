@@ -55,6 +55,7 @@ function pick(segments: string[], method: string): Handler | null {
   if (a === "tickets" && b && !c) {
     if (method === "GET") return call(ticketsId.GET);
     if (method === "DELETE") return call(ticketsId.DELETE);
+    if (method === "PATCH") return call(ticketsId.PATCH);
     return null;
   }
   if (a === "tickets" && b && c === "media" && d && segments.length === 4) {

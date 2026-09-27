@@ -19,16 +19,16 @@ export interface MunicipalSubmissionAdapter {
   status?(externalId: string): Promise<{ state: string; at: string } | null>;
 }
 
-/** Stores locally and sends nothing. The only adapter shipped with the prototype. */
+/** Persists a ticket in this server's JSON collection; no external institution is connected. */
 export const localDemoAdapter: MunicipalSubmissionAdapter = {
-  id: "local-demo",
+  id: "server-json",
   official: false,
   destination: {
-    ro: "Doar pe acest computer (fișier local .data/tickets.json). Nimic nu este trimis Primăriei.",
-    ru: "Только на этом компьютере (локальный файл .data/tickets.json). В Примэрию ничего не отправляется.",
+    ro: "Pe serverul aplicației (.data/tickets.json). Nimic nu este trimis Primăriei.",
+    ru: "На сервере приложения (.data/tickets.json). В Примэрию ничего не отправляется.",
   },
   async submit() {
-    return { submitted: false, externalId: null, note: "local-demo: not submitted to City Hall" };
+    return { submitted: false, externalId: null, note: "server-json: not submitted to City Hall" };
   },
 };
 
